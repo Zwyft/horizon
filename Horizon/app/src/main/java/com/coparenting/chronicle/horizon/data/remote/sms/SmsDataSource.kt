@@ -1,18 +1,18 @@
 package com.coparenting.chronicle.horizon.data.remote.sms
 
-import android.content.ContentResolver
 import android.content.Context
-import android.database.Cursor
 import android.net.Uri
+import android.provider.ContactsContract
 import android.provider.Telephony
 import com.coparenting.chronicle.horizon.domain.model.MessageType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import javax.inject.Inject
 
-class SmsDataSource(private val context: Context) {
-    
+class SmsDataSource @Inject constructor(private val context: Context) {
+
     data class SmsMessage(
         val id: Long,
         val address: String,
@@ -26,211 +26,237 @@ class SmsDataSource(private val context: Context) {
         val folder: String,
         val attachmentCount: Int = 0
     )
-    
+
     data class SmsContact(
         val name: String?,
         val phoneNumber: String
     )
-    
-    suspend fun getSmsMessages(): List<SmsMessage> {
-        return withContext(Dispatchers.IO) {
-            val smsList = mutableListOf<SmsMessage>()
-            
-            val uri = Uri.parse("content://sms")
-            val projection = arrayOf(
-                Telephony.Sms._ID,
-                Telephony.Sms.ADDRESS,
-                Telephony.Sms.BODY,
-                Telephony.Sms.DATE,
-                Telephony.Sms.TYPE,
-                Telephony.Sms.THREAD_ID,
-                Telephony.Sms.READ,
-                Telephony.Sms.SEEN
-            )
-            
+
+    suspend fun getSmsMessages(): List<SmsMessage> = withContext(Dispatchers.IO) {
+        val smsList = mutableListOf<SmsMessage>()
+
+        context.contentResolver.query(
+            Uri.parse("content://sms"),
+            arrayOf(
+                Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY,
+                Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.THREAD_ID,
+                Telephony.Sms.READ
+            ),
+            null, null,
+            "${Telephony.Sms.DATE} DESC"
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID))
+                val address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: continue
+                val body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)) ?: ""
+                val date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
+                val type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE))
+                val threadId = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)) ?: ""
+                val isRead = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1
+
+                val smsType = when (type) {
+                    Telephony.Sms.MESSAGE_TYPE_INBOX -> MessageType.INCOMING
+                    Telephony.Sms.MESSAGE_TYPE_SENT -> MessageType.OUTGOING
+                    Telephony.Sms.MESSAGE_TYPE_DRAFT -> MessageType.DRAFT
+                    else -> MessageType.UNKNOWN
+                }
+
+                smsList.add(
+                    SmsMessage(
+                        id = id,
+                        address = address,
+                        body = body,
+                        timestamp = LocalDateTime.ofEpochSecond(date / 1000, 0, ZoneOffset.UTC),
+                        type = smsType,
+                        contactName = getContactName(address),
+                        threadId = threadId,
+                        messageType = MessageType.TEXT,
+                        isRead = isRead,
+                        folder = if (smsType == MessageType.INCOMING) "inbox" else "sent"
+                    )
+                )
+            }
+        }
+        smsList
+    }
+
+    suspend fun getMessagesForDateAndContact(
+        date: LocalDateTime,
+        phoneNumber: String
+    ): List<SmsMessage> = withContext(Dispatchers.IO) {
+        val dayStart = date.withHour(0).withMinute(0).withSecond(0).withNano(0)
+            .toEpochSecond(ZoneOffset.UTC) * 1000
+        val dayEnd = date.withHour(23).withMinute(59).withSecond(59).withNano(0)
+            .toEpochSecond(ZoneOffset.UTC) * 1000
+        val normalized = normalizePhone(phoneNumber)
+
+        val result = mutableListOf<SmsMessage>()
+        context.contentResolver.query(
+            Uri.parse("content://sms"),
+            arrayOf(
+                Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY,
+                Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.THREAD_ID,
+                Telephony.Sms.READ
+            ),
+            "${Telephony.Sms.DATE} BETWEEN ? AND ?",
+            arrayOf(dayStart.toString(), dayEnd.toString()),
+            "${Telephony.Sms.DATE} ASC"
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: continue
+                if (normalizePhone(address) != normalized) continue
+
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID))
+                val body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)) ?: ""
+                val date2 = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
+                val type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE))
+                val threadId = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)) ?: ""
+                val isRead = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1
+                val smsType = when (type) {
+                    Telephony.Sms.MESSAGE_TYPE_INBOX -> MessageType.INCOMING
+                    Telephony.Sms.MESSAGE_TYPE_SENT -> MessageType.OUTGOING
+                    else -> MessageType.UNKNOWN
+                }
+                result.add(
+                    SmsMessage(
+                        id = id, address = address, body = body,
+                        timestamp = LocalDateTime.ofEpochSecond(date2 / 1000, 0, ZoneOffset.UTC),
+                        type = smsType,
+                        contactName = getContactName(address),
+                        threadId = threadId,
+                        messageType = MessageType.TEXT,
+                        isRead = isRead,
+                        folder = if (smsType == MessageType.INCOMING) "inbox" else "sent"
+                    )
+                )
+            }
+        }
+        result
+    }
+
+    suspend fun searchMessages(keywords: List<String>, limitDays: Int = 90): List<SmsMessage> =
+        withContext(Dispatchers.IO) {
+            val cutoff = (System.currentTimeMillis() - limitDays.toLong() * 86_400_000)
+            val all = mutableListOf<SmsMessage>()
+
             context.contentResolver.query(
-                uri,
-                projection,
-                null,
-                null,
+                Uri.parse("content://sms"),
+                arrayOf(
+                    Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY,
+                    Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.THREAD_ID,
+                    Telephony.Sms.READ
+                ),
+                "${Telephony.Sms.DATE} >= ?",
+                arrayOf(cutoff.toString()),
                 "${Telephony.Sms.DATE} DESC"
             )?.use { cursor ->
                 while (cursor.moveToNext()) {
-                    val smsMessage = cursorToSmsMessage(cursor)
-                    smsList.add(smsMessage)
-                }
-            }
-            
-            smsList
-        }
-    }
-    
-    suspend fun getMmsMessages(): List<SmsMessage> {
-        return withContext(Dispatchers.IO) {
-            val mmsList = mutableListOf<SmsMessage>()
-            
-            val uri = Uri.parse("content://mms")
-            val projection = arrayOf(
-                Telephony.Mms._ID,
-                Telephony.Mms.DATE,
-                Telephony.Mms.READ,
-                Telephony.Mms.THREAD_ID
-            )
-            
-            context.contentResolver.query(
-                uri,
-                projection,
-                null,
-                null,
-                "${Telephony.Mms.DATE} DESC"
-            )?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    val mmsMessage = cursorToMmsMessage(cursor)
-                    if (mmsMessage != null) {
-                        mmsList.add(mmsMessage)
+                    val body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)) ?: ""
+                    val bodyLower = body.lowercase()
+                    if (keywords.any { it.lowercase() in bodyLower }) {
+                        val id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID))
+                        val address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: ""
+                        val date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
+                        val type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE))
+                        val threadId = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)) ?: ""
+                        val isRead = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1
+                        val smsType = if (type == Telephony.Sms.MESSAGE_TYPE_INBOX) MessageType.INCOMING else MessageType.OUTGOING
+                        all.add(
+                            SmsMessage(
+                                id = id, address = address, body = body,
+                                timestamp = LocalDateTime.ofEpochSecond(date / 1000, 0, ZoneOffset.UTC),
+                                type = smsType,
+                                contactName = getContactName(address),
+                                threadId = threadId,
+                                messageType = MessageType.TEXT,
+                                isRead = isRead,
+                                folder = if (smsType == MessageType.INCOMING) "inbox" else "sent"
+                            )
+                        )
                     }
                 }
             }
-            
-            mmsList
+            all
         }
+
+    suspend fun getSmsContacts(): List<SmsContact> = withContext(Dispatchers.IO) {
+        val contacts = linkedSetOf<String>()
+        context.contentResolver.query(
+            Uri.parse("content://sms"),
+            arrayOf(Telephony.Sms.ADDRESS),
+            null, null, null
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val address = cursor.getString(0)
+                if (!address.isNullOrEmpty()) contacts.add(address)
+            }
+        }
+        contacts.map { SmsContact(getContactName(it), it) }
     }
-    
-    suspend fun getSmsContacts(): List<SmsContact> {
-        return withContext(Dispatchers.IO) {
-            val contacts = mutableSetOf<SmsContact>()
-            
-            val uri = Uri.parse("content://sms")
-            val projection = arrayOf(
-                Telephony.Sms.ADDRESS
+
+    private fun getContactName(phoneNumber: String): String? {
+        return try {
+            val uri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(phoneNumber)
             )
-            
             context.contentResolver.query(
                 uri,
-                projection,
-                null,
-                null,
-                null
+                arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
+                null, null, null
             )?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    val phoneNumber = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS))
-                    if (phoneNumber.isNotEmpty()) {
-                        contacts.add(SmsContact(null, phoneNumber))
-                    }
-                }
+                if (cursor.moveToFirst())
+                    cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME))
+                else null
             }
-            
-            contacts.toList()
-        }
-    }
-    
-    private fun cursorToSmsMessage(cursor: Cursor): SmsMessage {
-        val id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID))
-        val address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS))
-        val body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY))
-        val timestamp = LocalDateTime.ofEpochSecond(
-            cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)) / 1000,
-            0
-        )
-        val type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE))
-        val threadId = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID))
-        val isRead = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1
-        
-        val smsType = when (type) {
-            Telephony.Sms.MESSAGE_TYPE_INBOX -> MessageType.INCOMING
-            Telephony.Sms.MESSAGE_TYPE_SENT -> MessageType.OUTGOING
-            Telephony.Sms.MESSAGE_TYPE_DRAFT -> MessageType.DRAFT
-            else -> MessageType.UNKNOWN
-        }
-        
-        val contactName = getContactName(address)
-        
-        return SmsMessage(
-            id = id,
-            address = address,
-            body = body,
-            timestamp = timestamp,
-            type = smsType,
-            contactName = contactName,
-            threadId = threadId,
-            messageType = MessageType.TEXT,
-            isRead = isRead,
-            folder = "inbox"
-        )
-    }
-    
-    private fun cursorToMmsMessage(cursor: Cursor): SmsMessage? {
-        val id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Mms._ID))
-        val timestamp = LocalDateTime.ofEpochSecond(
-            cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Mms.DATE)) / 1000,
-            0
-        )
-        val threadId = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.THREAD_ID))
-        val isRead = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Mms.READ)) == 1
-        
-        val address = getMmsAddress(id)
-        val body = getMmsBody(id)
-        
-        return if (address != null && body != null) {
-            val contactName = getContactName(address)
-            SmsMessage(
-                id = id,
-                address = address,
-                body = body,
-                timestamp = timestamp,
-                type = MessageType.INCOMING,
-                contactName = contactName,
-                threadId = threadId,
-                messageType = MessageType.MMS,
-                isRead = isRead,
-                folder = "inbox"
-            )
-        } else {
+        } catch (e: Exception) {
             null
         }
     }
-    
-    private fun getContactName(phoneNumber: String): String? {
-        val uri = Uri.withAppendedPath(Telephony.Cont.CONTENT_URI, Uri.encode(phoneNumber))
-        val projection = arrayOf(Telephony.Cont.DISPLAY_NAME)
-        
-        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                return cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Cont.DISPLAY_NAME))
-            }
-        }
-        return null
-    }
-    
+
     private fun getMmsAddress(mmsId: Long): String? {
-        val uri = Uri.parse("content://mms/$mmsId/addr")
-        val projection = arrayOf(Telephony.Mms.Addr.ADDRESS)
-        var address: String? = null
-        
-        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Addr.ADDRESS))
+        return try {
+            context.contentResolver.query(
+                Uri.parse("content://mms/$mmsId/addr"),
+                arrayOf(Telephony.Mms.Addr.ADDRESS),
+                null, null, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst())
+                    cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Addr.ADDRESS))
+                else null
             }
+        } catch (e: Exception) {
+            null
         }
-        
-        return address
     }
-    
+
     private fun getMmsBody(mmsId: Long): String? {
-        val uri = Uri.parse("content://mms/$mmsId/part")
-        val projection = arrayOf(Telephony.Mms.Part._ID, Telephony.Mms.Part.CONTENT_TYPE, Telephony.Mms.Part.TEXT)
-        var body: String? = null
-        
-        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            while (cursor.moveToNext()) {
-                val contentType = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Part.CONTENT_TYPE))
-                if (contentType.startsWith("text/")) {
-                    body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Part.TEXT))
-                    break
+        return try {
+            context.contentResolver.query(
+                Uri.parse("content://mms/$mmsId/part"),
+                arrayOf(Telephony.Mms.Part._ID, Telephony.Mms.Part.CONTENT_TYPE, Telephony.Mms.Part.TEXT),
+                null, null, null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val contentType = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Part.CONTENT_TYPE))
+                    if (contentType.startsWith("text/")) {
+                        return cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Part.TEXT))
+                    }
                 }
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun normalizePhone(phone: String): String {
+        return phone.replace(Regex("[^0-9+]"), "").let {
+            when {
+                it.startsWith("+1") && it.length == 12 -> it.substring(2)
+                it.startsWith("1") && it.length == 11 -> it.substring(1)
+                else -> it
             }
         }
-        
-        return body
     }
 }

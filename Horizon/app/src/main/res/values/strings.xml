@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Horizon</string>
+    <string name="app_subtitle">Co-Parenting Journal</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_assistant">AI Assistant</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Home / Calendar -->
+    <string name="calendar_no_entries">No entries this month</string>
+    <string name="today">Today</string>
+
+    <!-- Day Detail -->
+    <string name="day_no_content">No entries or messages for this day.</string>
+    <string name="add_entry">Add Entry</string>
+    <string name="generate_summary">Generate AI Summary</string>
+    <string name="sms_permission_prompt">Grant SMS permission to see messages here</string>
+
+    <!-- Entry Editor -->
+    <string name="new_entry">New Entry</string>
+    <string name="edit_entry">Edit Entry</string>
+    <string name="entry_title_hint">Title (optional)</string>
+    <string name="entry_content_hint">What happened today…</string>
+    <string name="save">Save</string>
+    <string name="mark_important">Mark as important</string>
+
+    <!-- AI Assistant -->
+    <string name="assistant_title">AI Assistant</string>
+    <string name="assistant_hint">Ask about past events…</string>
+    <string name="assistant_welcome">Ask me anything about your co-parenting history. For example:\n\n• "Did Cheyenne ask about her parents watching Horizon?"\n• "What happened on the last handoff?"\n• "Were there any incidents last month?"</string>
+    <string name="api_key_missing">Please add your Claude API key in Settings to use this feature.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="coparent_section">Co-Parent</string>
+    <string name="coparent_name_label">Name</string>
+    <string name="coparent_name_hint">Co-parent\'s name</string>
+    <string name="coparent_phone_label">Phone Number</string>
+    <string name="coparent_phone_hint">+1 555 000 0000</string>
+    <string name="ai_section">AI Assistant</string>
+    <string name="api_key_label">Claude API Key</string>
+    <string name="api_key_hint">sk-ant-…</string>
+    <string name="sms_section">Messages</string>
+    <string name="show_sms_label">Show SMS in timeline</string>
+    <string name="sms_permission_label">SMS Permission</string>
+    <string name="sms_permission_granted">Granted</string>
+    <string name="sms_permission_denied">Not granted — tap to request</string>
+</resources>

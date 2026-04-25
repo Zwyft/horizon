@@ -104,7 +104,7 @@ class MessageRepositoryImpl @Inject constructor(
                 messageText = smsMessage.body,
                 timestamp = smsMessage.timestamp,
                 messageType = smsMessage.messageType ?: com.coparenting.chronicle.horizon.domain.model.MessageType.TEXT,
-                isIncoming = smsMessage.type == com.coparenting.chronicle.horizon.data.remote.sms.SmsDataSource.MessageType.INCOMING,
+                isIncoming = smsMessage.type == com.coparenting.chronicle.horizon.domain.model.MessageType.INCOMING,
                 threadId = smsMessage.threadId,
                 isRead = smsMessage.isRead,
                 folder = smsMessage.folder

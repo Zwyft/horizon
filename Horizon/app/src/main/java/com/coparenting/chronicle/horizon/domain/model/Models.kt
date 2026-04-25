@@ -22,7 +22,8 @@ data class Message(
 )
 
 enum class MessageType {
-    TEXT, IMAGE, AUDIO, VIDEO, FILE, MMS
+    TEXT, IMAGE, AUDIO, VIDEO, FILE, MMS,
+    INCOMING, OUTGOING, DRAFT, UNKNOWN
 }
 
 @Entity(tableName = "contacts")
@@ -51,6 +52,7 @@ data class DiaryEntry(
     val interactionDuration: Long, // in minutes
     val insights: List<String>,
     val perspectiveComparison: String?,
+    val emotionalScore: Double = 0.0, // -1.0 to 1.0
     val isGenerated: Boolean = true,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now()
@@ -77,16 +79,15 @@ enum class EventType {
     MESSAGE_EXCHANGE, PHONE_CALL, IN_PERSON_MEETING, ACTIVITY, DECISION_MADE, CONFLICT
 }
 
-@Entity(tableName = "analytics_data")
 data class AnalyticsData(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val id: String = UUID.randomUUID().toString(),
     val date: LocalDateTime,
     val contactId: String,
-    val messageFrequency: Double, // messages per hour
-    val interactionTime: Long, // in minutes
+    val messageFrequency: Double,
+    val interactionTime: Long,
     val conversationClusters: Int,
-    val avgResponseTime: Long, // in minutes
-    val emotionalScore: Double, // -1 to 1 scale
+    val avgResponseTime: Long,
+    val emotionalScore: Double,
     val keyTopics: List<String>,
     val lastUpdated: LocalDateTime = LocalDateTime.now()
 )
@@ -140,13 +141,6 @@ data class TimelineResult(
     val events: List<TimelineEvent>,
     val contactInteractions: Map<String, Int>,
     val totalDuration: Long
-)
-
-data class AnalyticsReport(
-    val dailyReport: Map<String, AnalyticsData>,
-    val weeklySummary: String,
-    val insights: List<String>,
-    val trends: List<String>
 )
 
 data class ParentingScheduleUpdate(

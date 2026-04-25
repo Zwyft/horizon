@@ -114,3 +114,16 @@ data class HourlyPattern(
     val hourOfDay: Int,
     val avgFrequency: Double = 0.0
 )
+
+data class ContactActivitySummary(
+    val contactId: String,
+    val contactName: String = "",
+    val totalMessages: Int = 0,
+    val avgResponseTime: Long = 0
+)
+
+data class DailyAnalyticsTrend(
+    val date: String,
+    val messageCount: Int = 0,
+    val avgSentiment: Double = 0.0
+)
