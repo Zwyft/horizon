@@ -148,7 +148,7 @@ fun SettingsScreen(
             }
 
             // ── OPENROUTER API KEY + MODEL ─────────────────────────────────
-            SectionHeader(icon = Icons.Default.Hub, title = "OpenRouter (Free Models)")
+            SectionHeader(icon = Icons.Default.Cloud, title = "OpenRouter (Free Models)")
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
