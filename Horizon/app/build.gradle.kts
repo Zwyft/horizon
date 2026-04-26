@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.coparenting.chronicle.horizon"
     compileSdk = 33
+    buildToolsVersion = "30.0.3"
 
     defaultConfig {
         applicationId = "com.coparenting.chronicle.horizon"
