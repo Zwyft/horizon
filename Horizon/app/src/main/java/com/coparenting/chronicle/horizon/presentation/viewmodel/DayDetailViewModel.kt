@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.coparenting.chronicle.horizon.data.preferences.AppPreferences
 import com.coparenting.chronicle.horizon.data.remote.claude.ClaudeApiService
+import com.coparenting.chronicle.horizon.data.remote.openrouter.OpenRouterApiService
 import com.coparenting.chronicle.horizon.data.remote.sms.SmsDataSource
 import com.coparenting.chronicle.horizon.domain.model.DiaryEntry
 import com.coparenting.chronicle.horizon.domain.model.EmotionalTone
@@ -44,6 +45,7 @@ class DayDetailViewModel @Inject constructor(
     private val diaryRepository: DiaryRepository,
     private val smsDataSource: SmsDataSource,
     private val claudeApiService: ClaudeApiService,
+    private val openRouterApiService: OpenRouterApiService,
     private val preferences: AppPreferences
 ) : AndroidViewModel(application) {
 
@@ -57,15 +59,12 @@ class DayDetailViewModel @Inject constructor(
 
             _uiState.update { it.copy(date = date, hasSmsPermission = hasSmsPermission, coParentPhone = phone, showSms = showSms) }
 
-            // Load journal entries reactively
             journalRepository.getForDate(date).collect { entries ->
                 val sms = if (hasSmsPermission && showSms && phone.isNotBlank()) {
                     runCatching { smsDataSource.getMessagesForDateAndContact(date, phone) }.getOrElse { emptyList() }
                 } else emptyList()
 
-                val diary = runCatching {
-                    diaryRepository.getDiaryEntryByDate(date)
-                }.getOrNull()
+                val diary = runCatching { diaryRepository.getDiaryEntryByDate(date) }.getOrNull()
 
                 _uiState.update { state ->
                     state.copy(
@@ -86,15 +85,20 @@ class DayDetailViewModel @Inject constructor(
     fun generateAiSummary() {
         val state = _uiState.value
         viewModelScope.launch {
-            val apiKey = preferences.claudeApiKey.first()
+            val provider = preferences.aiProvider.first()
+            val apiKey = if (provider == "openrouter") preferences.openRouterApiKey.first()
+                         else preferences.claudeApiKey.first()
+
             if (apiKey.isBlank()) {
-                _uiState.update { it.copy(generationError = "No API key configured. Add it in Settings.") }
+                val providerName = if (provider == "openrouter") "OpenRouter" else "Claude"
+                _uiState.update { it.copy(generationError = "No $providerName API key configured. Add it in Settings.") }
                 return@launch
             }
+
             _uiState.update { it.copy(isGeneratingSummary = true, generationError = null) }
 
             val dateLabel = state.date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy"))
-            val messagesText = buildSmsContext(state.smsMessages, state.coParentPhone)
+            val messagesText = buildSmsContext(state.smsMessages)
             val journalContext = state.journalEntries.joinToString("\n\n") {
                 "[${it.timestamp.format(DateTimeFormatter.ofPattern("h:mm a"))}] ${it.title.ifBlank { "Note" }}: ${it.content}"
             }
@@ -108,7 +112,14 @@ class DayDetailViewModel @Inject constructor(
                 return@launch
             }
 
-            claudeApiService.generateDiaryEntry(dateLabel, fullContext, apiKey).fold(
+            val result = if (provider == "openrouter") {
+                val modelId = preferences.selectedOpenRouterModel.first()
+                openRouterApiService.generateDiaryEntry(dateLabel, fullContext, apiKey, modelId)
+            } else {
+                claudeApiService.generateDiaryEntry(dateLabel, fullContext, apiKey)
+            }
+
+            result.fold(
                 onSuccess = { text ->
                     val diary = DiaryEntry(
                         date = state.date,
@@ -124,7 +135,13 @@ class DayDetailViewModel @Inject constructor(
                         isGenerated = true
                     )
                     runCatching { diaryRepository.saveDiaryEntry(diary) }
-                    _uiState.update { it.copy(isGeneratingSummary = false, generatedDiary = diary, timeline = buildTimeline(it.journalEntries, it.smsMessages, diary)) }
+                    _uiState.update {
+                        it.copy(
+                            isGeneratingSummary = false,
+                            generatedDiary = diary,
+                            timeline = buildTimeline(it.journalEntries, it.smsMessages, diary)
+                        )
+                    }
                 },
                 onFailure = { e ->
                     _uiState.update { it.copy(isGeneratingSummary = false, generationError = e.message ?: "Failed to generate summary.") }
@@ -151,7 +168,7 @@ class DayDetailViewModel @Inject constructor(
         }
     }
 
-    private fun buildSmsContext(messages: List<SmsDataSource.SmsMessage>, myPhone: String): String {
+    private fun buildSmsContext(messages: List<SmsDataSource.SmsMessage>): String {
         return messages.joinToString("\n") { msg ->
             val who = if (msg.type == com.coparenting.chronicle.horizon.domain.model.MessageType.INCOMING) "Co-parent" else "Me"
             val time = msg.timestamp.format(DateTimeFormatter.ofPattern("h:mm a"))

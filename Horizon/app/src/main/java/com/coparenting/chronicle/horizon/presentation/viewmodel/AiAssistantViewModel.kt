@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.coparenting.chronicle.horizon.data.preferences.AppPreferences
 import com.coparenting.chronicle.horizon.data.remote.claude.ClaudeApiService
+import com.coparenting.chronicle.horizon.data.remote.openrouter.OpenRouterApiService
 import com.coparenting.chronicle.horizon.data.remote.sms.SmsDataSource
 import com.coparenting.chronicle.horizon.domain.model.MessageType
 import com.coparenting.chronicle.horizon.domain.repository.ManualJournalRepository
@@ -38,6 +39,7 @@ class AiAssistantViewModel @Inject constructor(
     private val journalRepository: ManualJournalRepository,
     private val smsDataSource: SmsDataSource,
     private val claudeApiService: ClaudeApiService,
+    private val openRouterApiService: OpenRouterApiService,
     private val preferences: AppPreferences
 ) : AndroidViewModel(application) {
 
@@ -46,9 +48,14 @@ class AiAssistantViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            preferences.claudeApiKey.collect { key ->
-                _state.update { it.copy(hasApiKey = key.isNotBlank()) }
-            }
+            combine(
+                preferences.claudeApiKey,
+                preferences.openRouterApiKey,
+                preferences.aiProvider
+            ) { claudeKey, orKey, provider ->
+                val hasKey = if (provider == "openrouter") orKey.isNotBlank() else claudeKey.isNotBlank()
+                _state.update { it.copy(hasApiKey = hasKey) }
+            }.collect()
         }
     }
 
@@ -68,16 +75,27 @@ class AiAssistantViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val apiKey = preferences.claudeApiKey.first()
+            val provider = preferences.aiProvider.first()
+            val apiKey = if (provider == "openrouter") preferences.openRouterApiKey.first()
+                         else preferences.claudeApiKey.first()
+
             if (apiKey.isBlank()) {
-                appendAssistantMessage("Please add your Claude API key in Settings to use the AI assistant.")
+                val providerName = if (provider == "openrouter") "OpenRouter" else "Claude"
+                appendAssistantMessage("Please add your $providerName API key in Settings to use the AI assistant.")
                 _state.update { it.copy(isLoading = false) }
                 return@launch
             }
 
             val context = buildContext(question, hasSmsPermission)
 
-            claudeApiService.answerQuestion(question, context, apiKey).fold(
+            val result = if (provider == "openrouter") {
+                val modelId = preferences.selectedOpenRouterModel.first()
+                openRouterApiService.answerQuestion(question, context, apiKey, modelId)
+            } else {
+                claudeApiService.answerQuestion(question, context, apiKey)
+            }
+
+            result.fold(
                 onSuccess = { answer ->
                     appendAssistantMessage(answer)
                     _state.update { it.copy(isLoading = false) }
@@ -94,9 +112,7 @@ class AiAssistantViewModel @Inject constructor(
         val keywords = extractKeywords(question)
         val sb = StringBuilder()
 
-        // Search journal entries
-        val journalResults = journalRepository.search(keywords.firstOrNull() ?: question).first()
-            .take(10)
+        val journalResults = journalRepository.search(keywords.firstOrNull() ?: question).first().take(10)
         if (journalResults.isNotEmpty()) {
             sb.append("=== Journal Entries ===\n")
             journalResults.forEach { entry ->
@@ -106,7 +122,6 @@ class AiAssistantViewModel @Inject constructor(
             }
         }
 
-        // Search SMS messages
         if (hasSmsPermission && keywords.isNotEmpty()) {
             val phone = preferences.coParentPhone.first()
             val smsResults = runCatching {
@@ -125,10 +140,8 @@ class AiAssistantViewModel @Inject constructor(
             }
         }
 
-        // Also include recent journal entries as background context
         if (sb.isBlank()) {
-            val recent = journalRepository.getEntriesSince(LocalDateTime.now().minusDays(90))
-                .take(15)
+            val recent = journalRepository.getEntriesSince(LocalDateTime.now().minusDays(90)).take(15)
             if (recent.isNotEmpty()) {
                 sb.append("=== Recent Journal Entries (last 90 days) ===\n")
                 recent.forEach { entry ->
@@ -155,8 +168,6 @@ class AiAssistantViewModel @Inject constructor(
     }
 
     private fun appendAssistantMessage(text: String) {
-        _state.update { s ->
-            s.copy(messages = s.messages + ChatMessage(isUser = false, text = text))
-        }
+        _state.update { s -> s.copy(messages = s.messages + ChatMessage(isUser = false, text = text)) }
     }
 }
