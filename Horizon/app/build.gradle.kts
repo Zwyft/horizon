@@ -8,7 +8,6 @@ plugins {
 android {
     namespace = "com.coparenting.chronicle.horizon"
     compileSdk = 33
-    buildToolsVersion = "30.0.3"
 
     defaultConfig {
         applicationId = "com.coparenting.chronicle.horizon"
@@ -39,8 +38,8 @@ android {
 
     buildFeatures { compose = true }
 
-    // Compose compiler 1.5.3 matches Kotlin 1.9.0
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.3" }
+    // Compose compiler 1.4.8 matches Kotlin 1.8.22
+    composeOptions { kotlinCompilerExtensionVersion = "1.4.8" }
 
     packagingOptions {
         resources.excludes.add("/META-INF/{AL2.0,LGPL2.1}")
