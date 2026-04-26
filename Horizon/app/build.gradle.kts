@@ -38,7 +38,8 @@ android {
 
     buildFeatures { compose = true }
 
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.10" }
+    // Compose compiler 1.5.3 matches Kotlin 1.9.0
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.3" }
 
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
@@ -46,7 +47,8 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.02.02")
+    // Compose BOM 2023.10.01 → compose-ui:1.5.4, material3:1.1.2
+    val composeBom = platform("androidx.compose:compose-bom:2023.10.01")
     implementation(composeBom)
 
     // Core Android
@@ -67,9 +69,9 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
-    // Hilt
-    implementation("com.google.dagger:hilt-android:2.50")
-    ksp("com.google.dagger:hilt-android-compiler:2.50")
+    // Hilt 2.48.1 — KSP support stable at this version
+    implementation("com.google.dagger:hilt-android:2.48.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.48.1")
     implementation("androidx.hilt:hilt-work:1.1.0")
     ksp("androidx.hilt:hilt-compiler:1.1.0")
 
@@ -88,7 +90,7 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
-    // OkHttp for Claude API calls
+    // OkHttp for API calls
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Coroutines
