@@ -161,7 +161,7 @@ private fun ExampleQuestion(text: String) {
         Icon(Icons.Default.QuestionAnswer, null, modifier = Modifier.size(14.dp),
             tint = MaterialTheme.colorScheme.secondary)
         Text(
-            ""$text"",
+            "\"$text\"",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
