@@ -42,7 +42,7 @@ android {
     // Compose compiler 1.4.8 matches Kotlin 1.8.22
     composeOptions { kotlinCompilerExtensionVersion = "1.4.8" }
 
-    packagingOptions {
+    packaging {
         resources.excludes.add("/META-INF/{AL2.0,LGPL2.1}")
     }
 }
