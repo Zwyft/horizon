@@ -39,8 +39,8 @@ android {
 
     buildFeatures { compose = true }
 
-    // Compose compiler 1.4.8 matches Kotlin 1.8.22
-    composeOptions { kotlinCompilerExtensionVersion = "1.4.8" }
+    // Compose compiler 1.5.1 matches Kotlin 1.9.0
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.1" }
 
     packaging {
         resources.excludes.add("/META-INF/{AL2.0,LGPL2.1}")
@@ -52,8 +52,8 @@ kapt {
 }
 
 dependencies {
-    // Compose BOM 2023.06.01 → compose-ui:1.4.3, material3:1.1.1
-    val composeBom = platform("androidx.compose:compose-bom:2023.06.01")
+    // Compose BOM 2023.09.00 → compose-ui:1.5.3, material3:1.1.2
+    val composeBom = platform("androidx.compose:compose-bom:2023.09.00")
     implementation(composeBom)
 
     // Core Android
