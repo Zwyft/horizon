@@ -5,6 +5,7 @@ import com.coparenting.chronicle.horizon.domain.repository.MessageRepository
 import com.coparenting.chronicle.horizon.domain.repository.DiaryRepository
 import com.coparenting.chronicle.horizon.domain.repository.ContactRepository
 import com.coparenting.chronicle.horizon.domain.repository.AnalyticsRepository
+import com.coparenting.chronicle.horizon.domain.usecase.message.GroupMessagesByContactUseCase
 import com.coparenting.chronicle.horizon.presentation.util.EmotionalAnalyzer
 import com.coparenting.chronicle.horizon.presentation.util.MessageProcessor
 import com.coparenting.chronicle.horizon.presentation.util.TimeCalculator
