@@ -90,6 +90,7 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
+    ksp("org.xerial:sqlite-jdbc:3.45.3.0")
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.8.1")
