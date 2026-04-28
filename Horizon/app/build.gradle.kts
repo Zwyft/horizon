@@ -45,6 +45,14 @@ android {
     }
 }
 
+// Force sqlite-jdbc 3.45.3.0 so Room's KSP processor gets the Linux-Android/aarch64
+// native binary (added in 3.42.0.0, compiled against Bionic not glibc).
+configurations.all {
+    resolutionStrategy {
+        force("org.xerial:sqlite-jdbc:3.45.3.0")
+    }
+}
+
 dependencies {
     // Compose BOM 2023.09.00 → compose-ui:1.5.3, material3:1.1.2
     val composeBom = platform("androidx.compose:compose-bom:2023.09.00")
