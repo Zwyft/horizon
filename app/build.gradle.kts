@@ -57,6 +57,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3-icons-extended") // for Icons.Default.xxx
     implementation("androidx.compose.ui:ui-text-google-fonts")
     implementation("androidx.compose.foundation:foundation")
 
@@ -80,15 +81,12 @@ dependencies {
     // Gson (for JSON import)
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // XML Pull Parser (for SMS Backup & Restore XML)
-    implementation("androidx.core:core-ktx:1.12.0") // already has XmlPullParser
-
     // Google Drive API
     implementation("com.google.android.gms:play-services-auth:21.0.1")
     implementation("com.google.api-client:google-api-client-android:2.2.0")
     implementation("com.google.apis:google-api-services-drive:v3-rev20240226-2.2.0")
 
-    // WorkManager (for background journal generation)
+    // WorkManager (for background journal generation / backup)
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     // Biometric (for encryption unlock)
@@ -100,6 +98,15 @@ dependencies {
 
     // Coil (image loading for MMS)
     implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // iText7 (PDF export — AGPL license, OK for personal use)
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("com.itextpdf:layout:7.2.5")
+
+    // Retrofit + OkHttp (for NousResearch API)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

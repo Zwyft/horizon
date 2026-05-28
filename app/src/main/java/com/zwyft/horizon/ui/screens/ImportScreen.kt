@@ -1,6 +1,8 @@
 package com.zwyft.horizon.ui.screens
 
+import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -10,8 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.zwyft.horizon.R
 import com.zwyft.horizon.importing.ImportViewModel
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,13 +29,19 @@ fun ImportScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // File picker launcher
+    // SAF file picker — handles content:// URIs correctly
     val fileLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let {
-            // Convert Uri to path (simplified — real app needs SAF copy)
-            viewModel.onFileSelected(context, it)
+            scope.launch {
+                try {
+                    val tempFile = copyUriToTempFile(context, it, "import_tmp.xml")
+                    viewModel.onFileSelected(context, tempFile)
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Failed to read file: ${e.message}")
+                }
+            }
         }
     }
 
@@ -39,14 +50,10 @@ fun ImportScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is ImportViewModel.ImportEvent.Done -> {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Imported ${event.total} messages")
-                    }
+                    snackbarHostState.showSnackbar("Imported ${event.total} messages")
                 }
                 is ImportViewModel.ImportEvent.Error -> {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Error: ${event.message}")
-                    }
+                    snackbarHostState.showSnackbar("Error: ${event.message}")
                 }
             }
         }
@@ -77,7 +84,7 @@ fun ImportScreen(
             }
 
             Button(
-                onClick = { fileLauncher.launch("*/*") },
+                onClick = { fileLauncher.launch(arrayOf("*/*")) },
                 enabled = !uiState.importing
             ) {
                 Text("Select File")
@@ -92,3 +99,17 @@ fun ImportScreen(
         }
     }
 }
+
+/**
+ * Copy a content:// URI to a temp file (required for SAF URIs).
+ */
+private suspend fun copyUriToTempFile(context: Context, uri: Uri, fileName: String): File =
+    withContext(Dispatchers.IO) {
+        val tempFile = File(context.cacheDir, fileName)
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            FileOutputStream(tempFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+        tempFile
+    }

@@ -21,17 +21,17 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext ctx: Context): HorizonDatabase =
-        HorizonDatabase.getInstance(ctx)
+        Room.databaseBuilder(
+            ctx,
+            HorizonDatabase::class.java,
+            "horizon.db"
+        ).build()
 
-    @Provides
-    fun provideMessageDao(db: HorizonDatabase): MessageDao = db.messageDao()
+    @Provides fun provideMessageDao(db: HorizonDatabase): MessageDao = db.messageDao()
 
-    @Provides
-    fun provideContactDao(db: HorizonDatabase): ContactDao = db.contactDao()
+    @Provides fun provideContactDao(db: HorizonDatabase): ContactDao = db.contactDao()
 
-    @Provides
-    fun provideJournalEntryDao(db: HorizonDatabase): JournalEntryDao = db.journalEntryDao()
+    @Provides fun provideJournalEntryDao(db: HorizonDatabase): JournalEntryDao = db.journalEntryDao()
 
-    @Provides
-    fun provideSettingDao(db: HorizonDatabase): SettingDao = db.settingDao()
+    @Provides fun provideSettingDao(db: HorizonDatabase): SettingDao = db.settingDao()
 }
