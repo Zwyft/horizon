@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple horizon line icon -->
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M0,54 Q27,30 54,54 Q81,78 108,54 L108,108 L0,108 Z" />
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M0,60 Q27,40 54,60 Q81,80 108,60 L108,108 L0,108 Z" />
+    <circle
+        android:fillColor="#FFD54F"
+        android:cx="54"
+        android:cy="36"
+        android:r="12" />
+</vector>

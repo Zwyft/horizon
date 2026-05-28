@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!--
+      Full-backup rules.
+      We do NOT back up the Room DB (it can be re-imported).
+      We DO back up settings and encrypted prefs.
+    -->
+    <include domain="sharedpref" path="." />
+    <exclude domain="database" path="horizon.db" />
+    <exclude domain="database" path="horizon.db-wal" />
+    <exclude domain="database" path="horizon.db-shm" />
+</full-backup-content>

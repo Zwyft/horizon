@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Horizon</string>
+
+    <!-- Permissions -->
+    <string name="permission_sms_title">SMS Access</string>
+    <string name="permission_sms_desc">Horizon needs SMS access to import your messages.</string>
+    <string name="permission_contacts_title">Contacts Access</string>
+    <string name="permission_contacts_desc">Horizon needs contacts access to identify monitored contacts.</string>
+    <string name="permission_storage_title">Storage Access</string>
+    <string name="permission_storage_desc">Horizon needs storage access to import XML/JSON exports.</string>
+    <string name="permission_accessibility_title">Accessibility Service</string>
+    <string name="permission_accessibility_desc">Horizon needs Accessibility Service to capture RCS/SMS messages in real-time.</string>
+    <string name="permission_notification_title">Notification Access</string>
+    <string name="permission_notification_desc">Horizon needs notification access as a backup capture method.</string>
+
+    <!-- Import -->
+    <string name="import_title">Import Messages</string>
+    <string name="import_select_file">Select SMS Backup &amp; Restore file</string>
+    <string name="import_start">Start Import</string>
+    <string name="import_resume">Resume Import</string>
+    <string name="import_progress">Importing messages… %d%%</string>
+    <string name="import_done">Import complete: %d messages imported.</string>
+
+    <!-- Journal -->
+    <string name="journal_title">Journal</string>
+    <string name="journal_generate">Generate Journal</string>
+    <string name="journal_generating">Generating journal entry…</string>
+    <string name="journal_empty">No journal entries yet. Generate one from your messages.</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">Monitored Contacts</string>
+    <string name="contacts_add">Add Contact</string>
+    <string name="contacts_empty">No monitored contacts yet. Add contacts to track.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_nous_key">NousResearch API Key</string>
+    <string name="settings_nous_key_hint">Enter your NousResearch API key</string>
+    <string name="settings_encryption">Enable Encryption</string>
+    <string name="settings_cloud_sync">Google Drive Sync</string>
+
+    <!-- AI Chat -->
+    <string name="ai_chat_title">Ask AI</string>
+    <string name="ai_chat_hint">Ask something like: Did you say your parents were having her this Friday?</string>
+    <string name="ai_chat_send">Send</string>
+
+    <!-- Export -->
+    <string name="export_title">Export</string>
+    <string name="export_pdf">Export as PDF</string>
+    <string name="export_range">Select date range</string>
+</resources>
