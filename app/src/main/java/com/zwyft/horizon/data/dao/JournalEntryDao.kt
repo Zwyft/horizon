@@ -39,6 +39,12 @@ interface JournalEntryDao {
     @Query("UPDATE journal_entries SET bookmarked = :bookmarked WHERE id = :id")
     suspend fun setBookmarked(id: Long, bookmarked: Boolean)
 
+    @Query("UPDATE journal_entries SET userNotes = :notes, userEdited = 1 WHERE id = :id")
+    suspend fun setUserNotes(id: Long, notes: String)
+
+    @Query("UPDATE journal_entries SET userEdited = :edited WHERE id = :id")
+    suspend fun setUserEdited(id: Long, edited: Boolean)
+
     @Query("SELECT COUNT(*) FROM journal_entries")
     suspend fun count(): Int
 
@@ -51,4 +57,7 @@ interface JournalEntryDao {
 
     @Query("SELECT * FROM journal_entries WHERE bookmarked = 1 ORDER BY dateStart DESC")
     fun observeBookmarked(): Flow<List<JournalEntryEntity>>
+
+    @Query("SELECT * FROM journal_entries WHERE id = :id")
+    fun observeById(id: Long): Flow<JournalEntryEntity?>
 }

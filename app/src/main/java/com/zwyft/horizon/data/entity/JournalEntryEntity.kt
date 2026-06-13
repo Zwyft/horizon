@@ -46,5 +46,11 @@ data class JournalEntryEntity(
     val relatedMessageIds: String? = null,  // comma-separated message IDs
     val tags: String? = null,               // comma-separated tags
     val sentimentOverall: Float? = null,    // -1.0 to 1.0
-    val bookmarked: Boolean = false
+    val bookmarked: Boolean = false,
+
+    /** User's own annotation notes (null means no notes yet). */
+    val userNotes: String? = null,
+
+    /** Whether the user has added/edited their own notes. */
+    val userEdited: Boolean = false
 )

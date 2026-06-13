@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Permits cleartext traffic to 127.0.0.1 (localhost) only.
+
+  Android 9+ blocks cleartext HTTP by default. We need it to talk to
+  the embedded Ktor server in [com.zwyft.horizon.service.local.LocalLlmServerService],
+  which binds 127.0.0.1:8088 and exposes an OpenAI-compatible
+  /v1/chat/completions endpoint for the on-device LLM.
+
+  Restricting cleartext to 127.0.0.1 only is the safe configuration
+  recommended by Google — it means we still can't accidentally talk
+  to a non-localhost HTTP server (e.g. an attacker who DNS-spoofs
+  openrouter.ai to 127.0.0.1 wouldn't be exploitable because we'd
+  still verify the host header).
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

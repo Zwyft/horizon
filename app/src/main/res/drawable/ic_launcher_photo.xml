@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive-icon foreground: the user's JPG, inset to the 72x72dp safe
+    zone within the 108x108dp adaptive-icon canvas. The 18dp inset on
+    each side ensures the photo is never cropped by launcher masks
+    (circle, squircle, teardrop, etc.).
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_user"
+    android:inset="18%" />

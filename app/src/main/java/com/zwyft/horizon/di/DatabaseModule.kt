@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.zwyft.horizon.data.HorizonDatabase
 import com.zwyft.horizon.data.dao.ContactDao
 import com.zwyft.horizon.data.dao.JournalEntryDao
+import com.zwyft.horizon.data.dao.MessageAttachmentDao
 import com.zwyft.horizon.data.dao.MessageDao
 import com.zwyft.horizon.data.dao.SettingDao
 import dagger.Module
@@ -21,11 +22,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext ctx: Context): HorizonDatabase =
-        Room.databaseBuilder(
-            ctx,
-            HorizonDatabase::class.java,
-            "horizon.db"
-        ).build()
+        HorizonDatabase.getInstance(ctx)
 
     @Provides fun provideMessageDao(db: HorizonDatabase): MessageDao = db.messageDao()
 
@@ -34,4 +31,6 @@ object DatabaseModule {
     @Provides fun provideJournalEntryDao(db: HorizonDatabase): JournalEntryDao = db.journalEntryDao()
 
     @Provides fun provideSettingDao(db: HorizonDatabase): SettingDao = db.settingDao()
+
+    @Provides fun provideMessageAttachmentDao(db: HorizonDatabase): MessageAttachmentDao = db.messageAttachmentDao()
 }

@@ -7,10 +7,12 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.zwyft.horizon.data.dao.ContactDao
 import com.zwyft.horizon.data.dao.JournalEntryDao
+import com.zwyft.horizon.data.dao.MessageAttachmentDao
 import com.zwyft.horizon.data.dao.MessageDao
 import com.zwyft.horizon.data.dao.SettingDao
 import com.zwyft.horizon.data.entity.ContactEntity
 import com.zwyft.horizon.data.entity.JournalEntryEntity
+import com.zwyft.horizon.data.entity.MessageAttachmentEntity
 import com.zwyft.horizon.data.entity.MessageEntity
 import com.zwyft.horizon.data.entity.SettingEntity
 import java.util.Date
@@ -20,9 +22,10 @@ import java.util.Date
         MessageEntity::class,
         ContactEntity::class,
         JournalEntryEntity::class,
-        SettingEntity::class
+        SettingEntity::class,
+        MessageAttachmentEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -32,12 +35,25 @@ abstract class HorizonDatabase : RoomDatabase() {
     abstract fun contactDao(): ContactDao
     abstract fun journalEntryDao(): JournalEntryDao
     abstract fun settingDao(): SettingDao
+    abstract fun messageAttachmentDao(): MessageAttachmentDao
 
     companion object {
         private const val DB_NAME = "horizon.db"
 
         @Volatile
         private var INSTANCE: HorizonDatabase? = null
+
+        /**
+         * Migration 1→2: Add `userNotes TEXT` and `userEdited INTEGER`
+         * columns to journal_entries. These are nullable/optional, so
+         * existing rows are untouched.
+         */
+        private val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE journal_entries ADD COLUMN userNotes TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE journal_entries ADD COLUMN userEdited INTEGER NOT NULL DEFAULT 0")
+            }
+        }
 
         fun getInstance(context: Context): HorizonDatabase =
             INSTANCE ?: synchronized(this) {
@@ -46,6 +62,7 @@ abstract class HorizonDatabase : RoomDatabase() {
                     HorizonDatabase::class.java,
                     DB_NAME
                 )
+                    .addMigrations(MIGRATION_1_2)
                     .setQueryCallback({ sql, args ->
                         // Log queries in debug builds
                     }, { /* executor */ })

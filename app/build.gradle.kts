@@ -7,6 +7,10 @@ plugins {
     id("kotlin-kapt")
 }
 
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
 android {
     namespace = "com.zwyft.horizon"
     compileSdk = 34
@@ -57,7 +61,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material3:material3-icons-extended") // for Icons.Default.xxx
+    implementation("androidx.compose.material:material-icons-extended") // for Icons.Default.xxx
     implementation("androidx.compose.ui:ui-text-google-fonts")
     implementation("androidx.compose.foundation:foundation")
 
@@ -82,9 +86,9 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
 
     // Google Drive API
-    implementation("com.google.android.gms:play-services-auth:21.0.1")
-    implementation("com.google.api-client:google-api-client-android:2.2.0")
-    implementation("com.google.apis:google-api-services-drive:v3-rev20240226-2.2.0")
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.google.api-client:google-api-client-android:2.7.2")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20260428-2.0.0")
 
     // WorkManager (for background journal generation / backup)
     implementation("androidx.work:work-runtime-ktx:2.9.0")

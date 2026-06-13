@@ -11,9 +11,8 @@
     <path
         android:fillColor="#1565C0"
         android:pathData="M0,60 Q27,40 54,60 Q81,80 108,60 L108,108 L0,108 Z" />
-    <circle
+    <!-- Sun/circle drawn as path (VectorDrawable doesn't support <circle> natively) -->
+    <path
         android:fillColor="#FFD54F"
-        android:cx="54"
-        android:cy="36"
-        android:r="12" />
+        android:pathData="M54,24 A12,12 0 1,1 54,48 A12,12 0 1,1 54,24 Z" />
 </vector>
