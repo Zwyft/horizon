@@ -58,8 +58,8 @@ import android.content.Context
          assert(retrieved?.body == "Hello from Mom")
      }
 
-     @Test
-     fun getMonitoredInRange returns_only_monitored() = runTest {
+    @Test
+    fun `getMonitoredInRange_returns_only_monitored`() = runTest {
          val now = Date()
          val yesterday = Date(now.time - 86_400_000L)
 
@@ -72,8 +72,8 @@ import android.content.Context
          assert(results.all { it.monitored })
      }
 
-     @Test
-     fun searchBody finds_text() = runTest {
+    @Test
+    fun `searchBody_finds_text`() = runTest {
          dao.insert(MessageEntity(messageId = 10, threadId = 1, address = "a", body = "pickup on Friday", date = Date(), type = 1, monitored = true))
          dao.insert(MessageEntity(messageId = 11, threadId = 1, address = "b", body = "no match here", date = Date(), type = 1, monitored = true))
 
@@ -82,8 +82,8 @@ import android.content.Context
          assert(results[0].body?.contains("Friday") == true)
      }
 
-     @Test
-     fun markJournalProcessed works() = runTest {
+    @Test
+    fun `markJournalProcessed_works`() = runTest {
          val msg = MessageEntity(messageId = 20, threadId = 1, address = "a", body = "test", date = Date(), type = 1, monitored = true, journalProcessed = false)
          val id = dao.insert(msg)
          val inserted = dao.getById(id)!!

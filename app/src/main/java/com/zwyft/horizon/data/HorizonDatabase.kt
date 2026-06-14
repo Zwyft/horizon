@@ -5,11 +5,13 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.zwyft.horizon.data.dao.BatchProgressDao
 import com.zwyft.horizon.data.dao.ContactDao
 import com.zwyft.horizon.data.dao.JournalEntryDao
 import com.zwyft.horizon.data.dao.MessageAttachmentDao
 import com.zwyft.horizon.data.dao.MessageDao
 import com.zwyft.horizon.data.dao.SettingDao
+import com.zwyft.horizon.data.entity.BatchProgressEntity
 import com.zwyft.horizon.data.entity.ContactEntity
 import com.zwyft.horizon.data.entity.JournalEntryEntity
 import com.zwyft.horizon.data.entity.MessageAttachmentEntity
@@ -23,10 +25,11 @@ import java.util.Date
         ContactEntity::class,
         JournalEntryEntity::class,
         SettingEntity::class,
-        MessageAttachmentEntity::class
+        MessageAttachmentEntity::class,
+        BatchProgressEntity::class
     ],
     version = 2,
-    exportSchema = true
+    exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class HorizonDatabase : RoomDatabase() {
@@ -36,6 +39,7 @@ abstract class HorizonDatabase : RoomDatabase() {
     abstract fun journalEntryDao(): JournalEntryDao
     abstract fun settingDao(): SettingDao
     abstract fun messageAttachmentDao(): MessageAttachmentDao
+    abstract fun batchProgressDao(): BatchProgressDao
 
     companion object {
         private const val DB_NAME = "horizon.db"
@@ -63,6 +67,8 @@ abstract class HorizonDatabase : RoomDatabase() {
                     DB_NAME
                 )
                     .addMigrations(MIGRATION_1_2)
+                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigrationOnDowngrade()
                     .setQueryCallback({ sql, args ->
                         // Log queries in debug builds
                     }, { /* executor */ })

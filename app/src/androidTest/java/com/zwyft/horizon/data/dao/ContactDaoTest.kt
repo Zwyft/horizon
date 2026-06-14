@@ -54,7 +54,7 @@ class ContactDaoTest {
     }
 
     @Test
-    fun getMonitored returns_only_monitored() = runTest {
+    fun `getMonitored_returns_only_monitored`() = runTest {
         dao.insert(ContactEntity(name = "Mom", phoneNumber = "1", normalizedPhoneNumber = "1", monitored = true))
         dao.insert(ContactEntity(name = "Dad", phoneNumber = "2", normalizedPhoneNumber = "2", monitored = false))
 
@@ -64,7 +64,7 @@ class ContactDaoTest {
     }
 
     @Test
-    fun setMonitored toggles_flag() = runTest {
+    fun `setMonitored_toggles_flag`() = runTest {
         val id = dao.insert(ContactEntity(name = "Test", phoneNumber = "1", normalizedPhoneNumber = "1", monitored = true))
         dao.setMonitored(id, false)
 
@@ -73,7 +73,7 @@ class ContactDaoTest {
     }
 
     @Test
-    fun findByNormalized finds_contact() = runTest {
+    fun `findByNormalized_finds_contact`() = runTest {
         dao.insert(ContactEntity(name = "Mom", phoneNumber = "+155****4567", normalizedPhoneNumber = "155****4567", monitored = true))
 
         val found = dao.findByNormalized("155****4567")

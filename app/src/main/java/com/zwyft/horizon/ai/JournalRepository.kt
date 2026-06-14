@@ -21,7 +21,9 @@ import java.util.*
  */
 class JournalRepository(
     private val db: HorizonDatabase,
-    private val apiKey: String   // from settings
+    private val apiKey: String,   // from settings
+    private val provider: AiProvider = AiProvider.NOUS,
+    private val model: String = MODEL
 ) {
     companion object {
         const val BATCH_SIZE = 200  // messages per journal entry
@@ -46,7 +48,7 @@ class JournalRepository(
 
         // 1. Fetch monitored messages in range
         val messages = msgDao.getMonitoredInRange(startDate, endDate)
-        if (messages.isEmpty()) return null
+        if (messages.isEmpty()) return@withContext null
 
         // 2. Build "reading between the lines" prompt
         val prompt = buildPrompt(messages, startDate, endDate)
@@ -72,10 +74,10 @@ class JournalRepository(
             api.chatCompletion(request)
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
+            return@withContext null
         }
 
-        val aiText = response.choices?.firstOrNull()?.message?.content ?: return null
+        val aiText = response.choices?.firstOrNull()?.message?.content ?: return@withContext null
 
         // 4. Parse AI response (extract title, body, summary, tags)
         val (title, body, summary, tags) = parseAiResponse(aiText)
@@ -100,6 +102,61 @@ class JournalRepository(
         msgDao.markJournalProcessed(messages.map { it.id })
 
         entry.copy(id = id)
+    }
+
+    /**
+     * Generate a journal entry from a pre-fetched list of messages.
+     * Used by [AutoJournalWorker] for daily auto-generation.
+     */
+    suspend fun generateJournalEntryFromMessages(
+        messages: List<com.zwyft.horizon.data.entity.MessageEntity>,
+        startDate: Date,
+        endDate: Date
+    ): JournalEntryEntity? = withContext(Dispatchers.IO) {
+        if (messages.isEmpty()) return@withContext null
+
+        val prompt = buildPrompt(messages, startDate, endDate)
+
+        val request = NousRequest(
+            model = model,
+            messages = listOf(
+                NousMessage(
+                    role = "system",
+                    content = "You are a thoughtful co-parenting journal assistant. " +
+                        "Analyze messages between co-parents and write a neutral, " +
+                        "observant journal entry. Read between the lines — note " +
+                        "agreements, conflicts, tone, and implicit commitments."
+                ),
+                NousMessage(role = "user", content = prompt)
+            ),
+            temperature = 0.7f,
+            max_tokens = 2048
+        )
+
+        val response = try {
+            api.chatCompletion(request)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return@withContext null
+        }
+
+        val aiText = response.choices?.firstOrNull()?.message?.content ?: return@withContext null
+        val (title, body, summary, tags) = parseAiResponse(aiText)
+
+        val entry = JournalEntryEntity(
+            title = title,
+            body = body,
+            summary = summary,
+            dateStart = startDate,
+            dateEnd = endDate,
+            modelUsed = model,
+            promptUsed = prompt.take(500),
+            relatedMessageIds = messages.joinToString(",") { it.id.toString() },
+            tags = tags,
+            sentimentOverall = extractSentiment(aiText)
+        )
+        val id = journalDao.insert(entry)
+        return@withContext entry.copy(id = id)
     }
 
     /**

@@ -9,7 +9,7 @@ pluginManagement {
         id("com.android.library") version "8.3.1"
         id("org.jetbrains.kotlin.android") version "1.9.22"
         id("com.google.dagger.hilt.android") version "2.50"
-        id("androidx.room") version "2.6.1"
+        id("com.google.devtools.ksp") version "1.9.22-1.0.17"
     }
 }
 

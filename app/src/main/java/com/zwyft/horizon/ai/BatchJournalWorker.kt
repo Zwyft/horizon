@@ -89,6 +89,27 @@ class BatchJournalWorker(
             WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_NAME)
         }
 
+        /**
+         * Resolve the AI provider based on model and saved provider name.
+         */
+        fun resolveProvider(
+            model: String,
+            savedProviderName: String?,
+            nousKey: String?,
+            openrouterKey: String?
+        ): AiProvider {
+            return when {
+                model.startsWith("openai/") || model.startsWith("google/") ||
+                    model.startsWith("anthropic/") || model.startsWith("meta-llama/") ->
+                    AiProvider.OPENROUTER
+                savedProviderName?.uppercase() == "NOUS" && nousKey != null -> AiProvider.NOUS
+                savedProviderName?.uppercase() == "LOCAL" -> AiProvider.LOCAL
+                openrouterKey != null -> AiProvider.OPENROUTER
+                nousKey != null -> AiProvider.NOUS
+                else -> AiProvider.OPENROUTER
+            }
+        }
+
         private fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val mgr = context.getSystemService(NotificationManager::class.java)

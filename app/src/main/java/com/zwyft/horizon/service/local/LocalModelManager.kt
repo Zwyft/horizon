@@ -126,15 +126,10 @@ object LocalModelManager {
      * Download a model file. Emits progress via [downloadState]. Runs on
      * [Dispatchers.IO].
      *
-     * Note: Google deprecated the original MediaPipe model bucket. Models are
-     * now hosted on HuggingFace (litert-community) but are gated behind the
-     * Gemma license — you must accept the license and download the file
-     * manually from huggingface.co/litert-community/Gemma3-1B-IT, then place
-     * it in the app's models directory. The download URL is kept here so the
-     * button still attempts a direct download (which will likely return
-     * HTTP 401/403 until license terms are resolved).
-     *
-     * @throws IllegalStateException if the model ID is unknown.
+     * Models are hosted on HuggingFace (litert-community). Public models
+     * download directly without any API key. Gated models (Gemma, Phi)
+     * require accepting the license on huggingface.co first — no API key
+     * needed, just visit the model page and click "Accept License".
      */
     suspend fun downloadModel(context: Context, modelId: String): Result<String> = withContext(Dispatchers.IO) {
         val info = KNOWN_MODELS[modelId]
@@ -164,9 +159,13 @@ object LocalModelManager {
             if (!response.isSuccessful) {
                 val code = response.code
                 val hint = if (code == 401 || code == 403) {
-                    " — This model file requires accepting the Gemma license. Visit huggingface.co/litert-community/Gemma3-1B-IT to accept the license, then download the file manually and place it in the app's models directory."
+                    "\n\nThis model requires accepting the license on HuggingFace first." +
+                    "\n1. Open: huggingface.co/litert-community/${info.fileName.removeSuffix(".task")}" +
+                    "\n2. Tap 'Accept License' on the model page" +
+                    "\n3. Come back and tap Download again" +
+                    "\n\nNo API key or HuggingFace token is needed."
                 } else ""
-                val err = "HTTP $code downloading ${info.fileName}$hint"
+                val err = "Download failed (HTTP $code)$hint"
                 _downloadState.value = DownloadState(error = err)
                 return@withContext Result.failure(IOException(err))
             }
@@ -200,7 +199,12 @@ object LocalModelManager {
             Result.success(file.absolutePath)
         } catch (e: Exception) {
             Log.e(TAG, "Download failed: ${e.message}", e)
-            _downloadState.value = DownloadState(error = e.message ?: "Unknown error")
+            val msg = if (e is java.net.UnknownHostException || e.message?.contains("Unable to resolve host") == true) {
+                "Network error — check your internet connection and try again."
+            } else {
+                e.message ?: "Unknown error"
+            }
+            _downloadState.value = DownloadState(error = msg)
             // Clean up partial file
             if (file.exists()) file.delete()
             Result.failure(e)

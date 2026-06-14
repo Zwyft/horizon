@@ -18,7 +18,7 @@ interface SettingDao {
     @Query("SELECT value FROM settings WHERE `key` = :key LIMIT 1")
     suspend fun getValue(key: String): String?
 
-    @Query("UPDATE settings SET value = :value WHERE `key` = :key")
+    @Query("INSERT OR REPLACE INTO settings (`key`, `value`, `type`, `advanced`) VALUES (:key, :value, 'string', 0)")
     suspend fun setValue(key: String, value: String)
 
     @Query("SELECT * FROM settings ORDER BY `key` ASC")

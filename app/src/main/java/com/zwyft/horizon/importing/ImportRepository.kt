@@ -59,11 +59,11 @@ class ImportRepository(
             }
 
             // Fetch monitored contacts for fast lookup
-            val monitoredContacts = contactDao.getMonitored().first()
+            val monitoredContacts = contactDao.getMonitored()
             val monitoredNumbers = monitoredContacts.map { it.normalizedPhoneNumber }.toSet()
 
             var processed = 0
-            val batchBuffer = mutableListOf<MessageEntity>()
+            var batchBuffer = mutableListOf<MessageEntity>()
 
             val flow = if (parser is SmsBackupXmlParser) {
                 parser.parse(file, batchTag)
@@ -74,21 +74,21 @@ class ImportRepository(
             flow.collect { msg ->
                 // Mark monitored flag
                 val normalized = msg.address.normalizePhone()
-                msg.monitored = monitoredNumbers.contains(normalized)
-
-                batchBuffer.add(msg)
+                val monitored = monitoredNumbers.contains(normalized)
+                val newMsg = msg.copy(monitored = monitored)
+                batchBuffer.add(newMsg)
                 processed++
 
                 if (batchBuffer.size >= BATCH_SIZE) {
-                    insertBatch(batchBuffer, batchTag)
+                    insertBatch(batchBuffer.toList(), batchTag)
                     emit(ImportProgress.Progress(processed, batchTag))
-                    batchBuffer.clear()
+                    batchBuffer = mutableListOf()
                 }
             }
 
             // Final batch
             if (batchBuffer.isNotEmpty()) {
-                insertBatch(batchBuffer, batchTag)
+                insertBatch(batchBuffer.toList(), batchTag)
             }
 
             emit(ImportProgress.Done(processed, batchTag))

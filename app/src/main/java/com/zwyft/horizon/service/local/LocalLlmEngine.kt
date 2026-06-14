@@ -1,104 +1,86 @@
 package com.zwyft.horizon.service.local
 
+import android.content.Context
 import android.util.Log
-import com.google.ai.edge.litertlm.Backend
-import com.google.ai.edge.litertlm.Engine
-import com.google.ai.edge.litertlm.EngineConfig
+import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import java.io.File
 
 /**
- * Wraps LiteRT-LM's [Engine] — loads a `.litertlm` model bundle from
- * [modelPath] and exposes synchronous text generation.
+ * Wrapper around MediaPipe's LlmInference engine.
  *
- * Lifecycle:
- *  - Create via [create] (may take 5–30 s on first call as LiteRT-LM
- *    compiles GPU shaders for the model).
- *  - Call [generate] for each inference request (creates a new
- *    Conversation under the hood so each call is stateless).
- *  - Call [close] when shutting down to release GPU/NPU resources.
+ * Loads a `.task` model file and provides blocking [generate] for
+ * text generation. The engine must be closed with [close] to release
+ * native GPU resources.
  *
- * Thread safety: [Engine.sendMessage] is called on a single conversation
- * at a time. This class creates+closes a Conversation per generate call,
- * so it's safe for sequential use from a single coroutine (Ktor's default
- * single-threaded event group).
+ * Loading can take 5–30 seconds (GPU shader compilation + model
+ * deserialization). Call [create] on a background thread.
  */
 class LocalLlmEngine private constructor(
-    private val engine: Engine
+    private val inference: LlmInference
 ) {
     companion object {
         private const val TAG = "LocalLlmEngine"
-
-        /**
-         * Path inside `filesDir/` where model `.litertlm` files live.
-         * Managed by [LocalModelManager].
-         */
         const val MODELS_DIR = "models"
 
         /**
-         * Load a model from [modelPath] (absolute file path).
-         * Blocks until the model is compiled and ready — call off the main thread.
+         * Create a new engine from a `.task` model file.
          *
-         * @param modelPath Absolute path to a `.litertlm` model file.
-         * @throws IllegalStateException if the model file doesn't exist or
-         *         LiteRT-LM fails to load it.
+         * @param context Android context
+         * @param modelPath absolute path to the `.task` file
+         * @param temperature model temperature (0.0–1.0, default 0.7)
+         * @param maxTokens maximum response tokens (default 1024)
          */
-        fun create(context: android.content.Context, modelPath: String): LocalLlmEngine {
+        fun create(
+            context: Context,
+            modelPath: String,
+            maxTokens: Int = 1024
+        ): LocalLlmEngine {
             val file = File(modelPath)
             if (!file.exists()) {
                 throw IllegalStateException("Model file not found: $modelPath")
             }
 
-            val engineConfig = EngineConfig(
-                modelPath = modelPath,
-                backend = Backend.GPU()
-            )
-            val engine = Engine(engineConfig)
-            engine.initialize()
-            Log.i(TAG, "Loaded model from $modelPath")
-            return LocalLlmEngine(engine)
+            val options = LlmInference.LlmInferenceOptions.builder()
+                .setModelPath(modelPath)
+                .setMaxTokens(maxTokens)
+                .build()
+
+            val inference = LlmInference.createFromOptions(context, options)
+            Log.i(TAG, "Engine created from $modelPath (maxTokens=$maxTokens)")
+            return LocalLlmEngine(inference)
         }
 
-        /**
-         * Build the absolute filesDir path for a model file name
-         * (e.g. "gemma3-1b-it-int4.litertlm").
-         */
-        fun modelFile(context: android.content.Context, fileName: String): String =
+        /** Get the absolute path for a model file in the app's models directory. */
+        fun modelFile(context: Context, fileName: String): String =
             File(context.filesDir, "$MODELS_DIR/$fileName").absolutePath
     }
 
     /**
-     * Generate a full response for [prompt]. Blocks until the model
-     * produces the full output.
-     *
-     * Each call creates and closes a new Conversation, so it's fully
-     * stateless — the model doesn't remember previous calls.
-     *
-     * @param prompt The full input text.
-     * @return The generated text.
+     * Generate text from a prompt. Blocks until complete.
+     * Call on a background thread / [Dispatchers.IO].
      */
     fun generate(prompt: String): String {
-        val conversation = engine.createConversation()
+        Log.d(TAG, "generate() called with prompt length=${prompt.length}")
         return try {
-            val response = conversation.sendMessage(prompt)
-            response.text ?: ""
-        } finally {
-            try {
-                conversation.close()
-            } catch (e: Throwable) {
-                Log.w(TAG, "Error closing conversation", e)
-            }
+            val result = inference.generateResponse(prompt)
+            Log.d(TAG, "generate() complete, response length=${result.length}")
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Inference failed", e)
+            throw RuntimeException("Local LLM inference failed: ${e.message}", e)
         }
     }
 
     /**
-     * Release GPU/NPU resources. Call when the server shuts down.
-     * After calling, this instance is no longer usable.
+     * Release native resources. Must be called when the engine is
+     * no longer needed.
      */
     fun close() {
         try {
-            engine.close()
-        } catch (e: Throwable) {
-            Log.w(TAG, "Error closing LiteRT-LM Engine", e)
+            inference.close()
+            Log.i(TAG, "Engine closed")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing engine", e)
         }
     }
 }

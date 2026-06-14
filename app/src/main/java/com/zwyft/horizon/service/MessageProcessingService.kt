@@ -55,15 +55,23 @@ class MessageProcessingService : Service() {
         updateNotification("Processing ${unprocessed.size} messages...")
 
         // Resolve contact names + mark monitored
-        val contacts = db.contactDao().getMonitored().first()
-        val monitoredNumbers = contacts.associateBy { it.normalizedPhoneNumber }
+        val contactsList = db.contactDao().getMonitored()
+        val monitoredMap = contactsList.associateBy { it.normalizedPhoneNumber }
 
-        unprocessed.forEach { msg ->
+        val updated = unprocessed.map { msg ->
             val normalized = msg.address.normalizePhone()
-            val contact = monitoredNumbers[normalized]
+            val contact = monitoredMap[normalized]
             if (contact != null) {
-                msg.contactName = contact.name
-                msg.monitored = true
+                msg.copy(contactName = contact.name, monitored = true)
+            } else {
+                msg
+            }
+        }
+
+        // Update messages with contact names
+        updated.forEach { msg ->
+            if (msg.contactName != null) {
+                db.messageDao().updateContactName(msg.address, msg.contactName)
             }
         }
 

@@ -60,4 +60,11 @@ interface JournalEntryDao {
 
     @Query("SELECT * FROM journal_entries WHERE id = :id")
     fun observeById(id: Long): Flow<JournalEntryEntity?>
+
+    @Query("""
+        SELECT * FROM journal_entries
+        WHERE dateStart <= :endDate AND dateEnd >= :startDate
+        ORDER BY dateStart ASC
+    """)
+    suspend fun getOverlapping(startDate: Date, endDate: Date): List<JournalEntryEntity>
 }

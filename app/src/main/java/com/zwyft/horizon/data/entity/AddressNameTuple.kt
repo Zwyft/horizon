@@ -1,6 +1,5 @@
 package com.zwyft.horizon.data.entity
 
-import androidx.room.ColumnInfo
 import java.util.Date
 
 /**
@@ -8,14 +7,12 @@ import java.util.Date
  * Room maps columns by name — property names must match the SELECT aliases.
  */
 data class AddressNameTuple(
-    @ColumnInfo(name = "address")
     val address: String,
-    @ColumnInfo(name = "contactName")
     val contactName: String?
 )
 
 /** Tuple returned by [com.zwyft.horizon.data.dao.MessageDao.getTopAddresses]. */
-data class AddressCount(
+data class AddressNameCount(
     val address: String,
     val cnt: Long
 )
@@ -27,8 +24,6 @@ data class AddressCount(
  * than a hardcoded 7-day window.
  */
 data class MonitoredDateRange(
-    @ColumnInfo(name = "minDate")
     val minDate: Date?,
-    @ColumnInfo(name = "maxDate")
     val maxDate: Date?
 )

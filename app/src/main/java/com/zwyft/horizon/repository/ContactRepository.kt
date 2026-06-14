@@ -5,6 +5,8 @@ import com.zwyft.horizon.data.entity.ContactEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import java.util.*
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Repository for managing monitored contacts.
@@ -14,7 +16,8 @@ import java.util.*
  * - Normalize phone numbers (strip non-digits)
  * - Sync monitored flag to existing messages (tag past messages)
  */
-class ContactRepository(private val db: HorizonDatabase) {
+@Singleton
+class ContactRepository @Inject constructor(private val db: HorizonDatabase) {
 
     private val dao = db.contactDao()
     private val msgDao = db.messageDao()

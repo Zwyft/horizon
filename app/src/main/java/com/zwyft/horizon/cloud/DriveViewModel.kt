@@ -1,22 +1,27 @@
 package com.zwyft.horizon.cloud
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zwyft.horizon.data.HorizonDatabase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for Drive sync settings.
  */
-class DriveViewModel(
-    private val db: HorizonDatabase
-) : ViewModel() {
+@HiltViewModel
+class DriveViewModel @Inject constructor(
+    application: Application
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(DriveUiState())
     val uiState: StateFlow<DriveUiState> = _uiState.asStateFlow()
 
-    private val repo = DriveRepository(db, db)
+    private val db = HorizonDatabase.getInstance(application)
+    private val repo = DriveRepository(application, db)
 
     init {
         checkSignIn()
@@ -25,6 +30,8 @@ class DriveViewModel(
     private fun checkSignIn() {
         _uiState.update { it.copy(signedIn = repo.isSignedIn()) }
     }
+
+    fun getSignInIntent() = repo.getSignInIntent()
 
     fun signIn(data: android.content.Intent?) {
         viewModelScope.launch {
@@ -64,11 +71,22 @@ class DriveViewModel(
         }
     }
 
+    fun refreshBackups() {
+        listBackups()
+    }
+
     fun restoreBackup(fileId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(restoring = true) }
             val success = repo.restoreBackup(fileId)
-            _uiState.update { it.copy(restoring = false, error = if (!success) "Restore failed" else null) }
+            _uiState.update { it.copy(restoring = false, lastRestoreSucceeded = success, error = if (!success) "Restore failed" else null) }
+        }
+    }
+
+    fun deleteBackup(fileId: String) {
+        viewModelScope.launch {
+            repo.deleteBackup(fileId)
+            listBackups()
         }
     }
 }
@@ -80,5 +98,6 @@ data class DriveUiState(
     val loadingBackups: Boolean = false,
     val backups: List<com.google.api.services.drive.model.File> = emptyList(),
     val lastBackupId: String? = null,
+    val lastRestoreSucceeded: Boolean? = null,
     val error: String? = null
 )

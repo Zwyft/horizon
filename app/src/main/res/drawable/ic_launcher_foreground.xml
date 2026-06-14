@@ -4,15 +4,22 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Simple horizon line icon -->
+
+    <!-- Horizon gradient (dark to light layers) -->
     <path
-        android:fillColor="#90CAF9"
-        android:pathData="M0,54 Q27,30 54,54 Q81,78 108,54 L108,108 L0,108 Z" />
+        android:fillColor="#FF8D6E"
+        android:pathData="M0,54 Q27,34 54,54 Q81,74 108,54 L108,108 L0,108 Z" />
     <path
-        android:fillColor="#1565C0"
-        android:pathData="M0,60 Q27,40 54,60 Q81,80 108,60 L108,108 L0,108 Z" />
-    <!-- Sun/circle drawn as path (VectorDrawable doesn't support <circle> natively) -->
+        android:fillColor="#FF6E40"
+        android:pathData="M0,60 Q27,42 54,60 Q81,78 108,60 L108,108 L0,108 Z" />
+
+    <!-- Sun (rising) -->
     <path
         android:fillColor="#FFD54F"
-        android:pathData="M54,24 A12,12 0 1,1 54,48 A12,12 0 1,1 54,24 Z" />
+        android:pathData="M54,20 A14,14 0 1,1 54,48 A14,14 0 1,1 54,20 Z" />
+
+    <!-- Sun rays -->
+    <path
+        android:fillColor="#FFECB3"
+        android:pathData="M54,8 L57,18 L51,18 Z M54,50 L57,40 L51,40 Z M36,26 L43,32 L38,37 Z M72,26 L65,32 L70,37 Z M38,43 L45,37 L40,32 Z M70,43 L63,37 L68,32 Z" />
 </vector>

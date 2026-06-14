@@ -1,18 +1,20 @@
 package com.zwyft.horizon.cloud
 
 import android.content.Context
-import androidx.work.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.http.FileContent
+import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
-import com.google.api.services.drive.model.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.FileInputStream
 import java.util.*
 
 /**
@@ -36,7 +38,7 @@ class GoogleDriveClient(private val context: Context) {
     private val gso: GoogleSignInOptions by lazy {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestScopes(Drive.SCOPE_FILE, Drive.SCOPE_APP_DATA_FOLDER)
+            .requestScopes(com.google.android.gms.common.api.Scope(DriveScopes.DRIVE_APPDATA))
             .build()
     }
 
@@ -56,8 +58,7 @@ class GoogleDriveClient(private val context: Context) {
         val task = GoogleSignIn.getSignedInAccountFromIntent(data)
         return try {
             val account = task.await()
-            // account.account == Google account
-            true
+            account != null
         } catch (e: Exception) {
             false
         }
@@ -76,6 +77,18 @@ class GoogleDriveClient(private val context: Context) {
     fun isSignedIn(): Boolean =
         GoogleSignIn.getLastSignedInAccount(context) != null
 
+    private fun buildDriveService(): Drive {
+        val account = GoogleSignIn.getLastSignedInAccount(context)
+            ?: throw IllegalStateException("Not signed in")
+        val credential = GoogleAccountCredential.usingOAuth2(
+            context,
+            listOf(DriveScopes.DRIVE_APPDATA)
+        ).setSelectedAccount(account.account)
+        return Drive.Builder(NetHttpTransport(), GsonFactory.getDefaultInstance(), credential)
+            .setApplicationName("Horizon")
+            .build()
+    }
+
     /**
      * Upload a backup file to Drive (App Data Folder, hidden from user).
      *
@@ -83,17 +96,7 @@ class GoogleDriveClient(private val context: Context) {
      * @return Drive file ID (for future download/delete)
      */
     suspend fun uploadBackup(localFile: java.io.File): String = withContext(Dispatchers.IO) {
-        val account = GoogleSignIn.getLastSignedInAccount(context) ?: throw IllegalStateException("Not signed in")
-
-        val drive = Drive.Builder(
-            com.google.api.client.http.javanet.NetHttpTransport(),
-            com.google.api.client.json.jackson2.JacksonFactory.getDefaultInstance(),
-            com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential.usingOAuth2(
-                context,
-                listOf(DriveScopes.DRIVE_APPDATA)
-            ).setSelectedAccount(account.account)
-        ).setApplicationName("Horizon").build()
-
+        val drive = buildDriveService()
         val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd_HHmmss").format(Date())
         val metadata = com.google.api.services.drive.model.File().apply {
             name = "${BACKUP_PREFIX}${timestamp}.db"
@@ -101,7 +104,7 @@ class GoogleDriveClient(private val context: Context) {
             mimeType = BACKUP_MIME
         }
 
-        val content = com.google.api.client.http.FileContent(BACKUP_MIME, localFile)
+        val content = FileContent(BACKUP_MIME, localFile)
         val result = drive.files().create(metadata, content).setFields("id").execute()
         result.id
     }
@@ -110,17 +113,12 @@ class GoogleDriveClient(private val context: Context) {
      * List available backups (newest first).
      */
     suspend fun listBackups(): List<com.google.api.services.drive.model.File> = withContext(Dispatchers.IO) {
-        val account = GoogleSignIn.getLastSignedInAccount(context) ?: return emptyList()
-
-        val drive = Drive.Builder(/* ... same as above ... */)
-            .build()
-
+        val drive = buildDriveService()
         val result = drive.files().list()
             .setSpaces(APP_DATA_FOLDER)
             .setFields("files(id, name, createdTime, size)")
             .execute()
-
-        result.files?.sortedByDescending { it.createdTime } ?: emptyList()
+        result.files?.sortedByDescending { it.createdTime?.value ?: 0 } ?: emptyList()
     }
 
     /**
@@ -129,9 +127,7 @@ class GoogleDriveClient(private val context: Context) {
      * @return Local file (in cache dir)
      */
     suspend fun downloadBackup(fileId: String): java.io.File = withContext(Dispatchers.IO) {
-        val account = GoogleSignIn.getLastSignedInAccount(context) ?: throw IllegalStateException("Not signed in")
-        val drive = Drive.Builder(/* ... */).build()
-
+        val drive = buildDriveService()
         val outputFile = java.io.File(context.cacheDir, "horizon_restored.db")
         drive.files().get(fileId).executeMediaAndDownloadTo(FileOutputStream(outputFile))
         outputFile
@@ -141,8 +137,7 @@ class GoogleDriveClient(private val context: Context) {
      * Delete a backup from Drive.
      */
     suspend fun deleteBackup(fileId: String) = withContext(Dispatchers.IO) {
-        val account = GoogleSignIn.getLastSignedInAccount(context) ?: return
-        val drive = Drive.Builder(/* ... */).build()
+        val drive = buildDriveService()
         drive.files().delete(fileId).execute()
     }
 }

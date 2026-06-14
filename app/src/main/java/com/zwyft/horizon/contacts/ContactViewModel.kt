@@ -4,13 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zwyft.horizon.data.entity.ContactEntity
 import com.zwyft.horizon.repository.ContactRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * ViewModel for the Contacts screen.
  */
-class ContactViewModel(
+@HiltViewModel
+class ContactViewModel @Inject constructor(
     private val repo: ContactRepository
 ) : ViewModel() {
 
@@ -19,7 +22,9 @@ class ContactViewModel(
 
     init {
         observeMonitoredContacts()
-        repo.seedDefaults()   // seed on first launch
+        viewModelScope.launch {
+            repo.seedDefaults()   // seed on first launch
+        }
     }
 
     private fun observeMonitoredContacts() {

@@ -4,9 +4,10 @@ import android.content.Context
 import com.itextpdf.kernel.pdf.PdfDocument
 import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.layout.Document
+import com.itextpdf.layout.element.AreaBreak
 import com.itextpdf.layout.element.Paragraph
 import com.itextpdf.layout.element.Table
-import com.itextpdf.layout.property.UnitValue
+import com.itextpdf.layout.properties.UnitValue
 import com.zwyft.horizon.data.HorizonDatabase
 import com.zwyft.horizon.data.entity.MessageEntity
 import kotlinx.coroutines.Dispatchers
@@ -15,36 +16,15 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.*
 
-/**
- * PDF export engine for legal/court use.
- *
- * Generates PDF with:
- * - Cover page (case info, date range, contacts)
- * - Messages table (timestamp, sender, message, direction)
- * - Chain of custody (SHA-256 hash of export)
- * - Metadata footer on every page
- *
- * Uses iText7 (AGPL — for open-source projects; for closed-source you'd need
- * a commercial license or use PdfBox instead).
- */
 class PdfExporter(private val context: Context) {
 
     companion object {
-        const val  PAGE_SIZE = com.itextpdf.kernel.geom.PageSize.A4
-        const val  MARGIN    = 36f
+        val PAGE_SIZE = com.itextpdf.kernel.geom.PageSize.A4
+        const val MARGIN = 36f
     }
 
     private val db: HorizonDatabase = HorizonDatabase.getInstance(context)
 
-    /**
-     * Generate a court-ready PDF.
-     *
-     * @param startDate Start of range (or null = all)
-     * @param endDate End of range (or null = all)
-     * @param contacts Filter by contact IDs (or empty = all monitored)
-     * @param outputFile Where to write the PDF
-     * @return SHA-256 hash of the generated PDF (for chain of custody)
-     */
     suspend fun generatePdf(
         startDate: Date? = null,
         endDate: Date? = null,
@@ -58,7 +38,6 @@ class PdfExporter(private val context: Context) {
             setMargins(MARGIN, MARGIN, MARGIN, MARGIN)
         }
 
-        // 1. Fetch messages
         val messages: List<MessageEntity> = if (contacts.isEmpty()) {
             if (startDate != null && endDate != null) {
                 db.messageDao().getMonitoredInRange(startDate, endDate)
@@ -66,58 +45,54 @@ class PdfExporter(private val context: Context) {
                 db.messageDao().getMonitoredPaged(limit = Int.MAX_VALUE, offset = 0)
             }
         } else {
-            // Filter by contact (simplified — real app joins with contacts table)
             db.messageDao().getMonitoredPaged(limit = Int.MAX_VALUE, offset = 0)
         }
 
-        // 2. Cover page
         addCoverPage(doc, messages.size, startDate, endDate)
-
-        // 3. Messages table
         addMessagesTable(doc, messages)
 
-        // 4. Chain of custody page
         val pdfHash = computeHash(outputFile)
         addCustodyPage(doc, pdfHash)
 
         doc.close()
-
         pdfHash
     }
 
     private fun addCoverPage(doc: Document, messageCount: Int, start: Date?, end: Date?) {
         doc.add(Paragraph("HORIZON — CO-PARENTING MESSAGE EXPORT"))
-            .add(Paragraph("Generated: ${Date()}"))
-            .add(Paragraph("Date Range: ${start ?: "all"} to ${end ?: "all"}"))
-            .add(Paragraph("Total Messages: $messageCount"))
-            .add(Paragraph("Exported by: Horizon App"))
+        doc.add(AreaBreak())
+        doc.add(Paragraph("Generated: ${Date()}"))
+        doc.add(Paragraph("Date Range: ${start ?: "all"} to ${end ?: "all"}"))
+        doc.add(Paragraph("Total Messages: $messageCount"))
+        doc.add(Paragraph("Exported by: Horizon App"))
+        doc.add(AreaBreak())
     }
 
     private fun addMessagesTable(doc: Document, messages: List<MessageEntity>) {
         val table = Table(UnitValue.createPercentArray(floatArrayOf(15f, 15f, 15f, 55f)))
             .setWidth(UnitValue.createPercentValue(100f))
 
-        // Header
-        table.addHeaderCell("Timestamp")
-        table.addHeaderCell("Contact")
-        table.addHeaderCell("Direction")
-        table.addHeaderCell("Message")
+        table.addHeaderCell(Paragraph("Timestamp"))
+        table.addHeaderCell(Paragraph("Contact"))
+        table.addHeaderCell(Paragraph("Direction"))
+        table.addHeaderCell(Paragraph("Message"))
 
         messages.forEach { msg ->
-            table.addCell(msg.date.toString())
-            table.addCell(msg.contactName ?: msg.address)
-            table.addCell(if (msg.type == 1) "RECEIVED" else "SENT")
-            table.addCell(msg.body ?: "(no text)")
+            table.addCell(Paragraph(msg.date.toString()))
+            table.addCell(Paragraph(msg.contactName ?: msg.address))
+            table.addCell(Paragraph(if (msg.type == 1) "RECEIVED" else "SENT"))
+            table.addCell(Paragraph(msg.body ?: "(no text)"))
         }
 
         doc.add(table)
     }
 
     private fun addCustodyPage(doc: Document, hash: String) {
+        doc.add(AreaBreak())
         doc.add(Paragraph("CHAIN OF CUSTODY"))
-            .add(Paragraph("This export was generated by Horizon App."))
-            .add(Paragraph("SHA-256 hash of PDF: $hash"))
-            .add(Paragraph("To verify integrity, recompute hash of this file and compare."))
+        doc.add(Paragraph("This export was generated by Horizon App."))
+        doc.add(Paragraph("SHA-256 hash of PDF: $hash"))
+        doc.add(Paragraph("To verify integrity, recompute hash of this file and compare."))
     }
 
     private fun computeHash(file: File): String {

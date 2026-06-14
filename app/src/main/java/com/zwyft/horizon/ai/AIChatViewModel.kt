@@ -1,19 +1,26 @@
 package com.zwyft.horizon.ai
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zwyft.horizon.data.HorizonDatabase
 import com.zwyft.horizon.data.entity.MessageEntity
+import com.zwyft.horizon.service.local.LocalLlmServerService
+import com.zwyft.horizon.service.local.LocalModelManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+import javax.inject.Inject
 
 /**
  * ViewModel for the AI Chat screen.
  */
-class AIChatViewModel(
+@HiltViewModel
+class AIChatViewModel @Inject constructor(
+    application: Application,
     private val db: HorizonDatabase
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AIChatUiState())
     val uiState: StateFlow<AIChatUiState> = _uiState.asStateFlow()
@@ -37,14 +44,60 @@ class AIChatViewModel(
 
         viewModelScope.launch {
             try {
-                // Fetch API key from settings
                 val settingDao = db.settingDao()
-                val apiKey = settingDao.getValue("nous_api_key") ?: run {
-                    _uiState.update { it.copy(loading = false, error = "NousResearch API key not set") }
+
+                // Resolve provider
+                val providerName = settingDao.getValue("ai_provider") ?: "NOUS"
+                val provider = when (providerName.uppercase()) {
+                    "OPENROUTER" -> AiProvider.OPENROUTER
+                    "LOCAL"      -> AiProvider.LOCAL
+                    else         -> AiProvider.NOUS
+                }
+
+                // Resolve API key
+                val apiKey = when (provider) {
+                    AiProvider.NOUS       -> settingDao.getValue("nous_api_key")
+                    AiProvider.OPENROUTER -> settingDao.getValue("openrouter_api_key")
+                    AiProvider.LOCAL      -> "local-no-key"
+                }
+
+                if (apiKey == null && provider != AiProvider.LOCAL) {
+                    _uiState.update {
+                        it.copy(loading = false, error = "API key not set. Configure in Settings.")
+                    }
                     return@launch
                 }
 
-                val repo = AIChatRepository(db, apiKey)
+                // LOCAL provider pre-flight checks
+                if (provider == AiProvider.LOCAL) {
+                    val modelId = settingDao.getValue("local_ai_model")
+                        ?: ModelRegistry.LOCAL_GEMMA3_1B
+                    if (!LocalModelManager.isModelDownloaded(
+                            getApplication(),
+                            modelId
+                        )
+                    ) {
+                        _uiState.update {
+                            it.copy(
+                                loading = false,
+                                error = "Local model not downloaded. Open Settings → Local AI to download."
+                            )
+                        }
+                        return@launch
+                    }
+                    if (!LocalLlmServerService.isRunning) {
+                        _uiState.update {
+                            it.copy(
+                                loading = false,
+                                error = "Local AI not running. Tap 'Start' in Settings."
+                            )
+                        }
+                        return@launch
+                    }
+                }
+
+                val resolvedKey = apiKey ?: "local-no-key"
+                val repo = AIChatRepository(db, resolvedKey, provider)
                 val (answer, results) = repo.ask(question)
 
                 // Add AI response to chat history

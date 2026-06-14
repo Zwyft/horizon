@@ -17,15 +17,16 @@ import java.util.*
  */
 class AIChatRepository(
     private val db: HorizonDatabase,
-    private val apiKey: String
+    private val apiKey: String,
+    private val provider: AiProvider = AiProvider.NOUS
 ) {
+    private val msgDao = db.messageDao()
+    private val journalDao = db.journalEntryDao()
+    private val api = AiClientFactory.create(provider, apiKey)
+
     companion object {
         const val MODEL = "hermes-3"
     }
-
-    private val msgDao = db.messageDao()
-    private val journalDao = db.journalEntryDao()
-    private val api = NousApiClient.create(apiKey)
 
     /**
      * Ask a natural language question about messages/journal.

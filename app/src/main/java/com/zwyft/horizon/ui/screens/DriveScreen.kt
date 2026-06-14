@@ -205,8 +205,14 @@ fun DriveScreen(
                 }
 
                 items(uiState.backups) { file ->
+                    val driveFile = DriveFileInfo(
+                        id = file.id,
+                        name = file.name ?: "backup",
+                        modifiedTime = (file.createdTime?.value ?: 0L) as Long,
+                        size = (file.size ?: 0L) as Long
+                    )
                     BackupCard(
-                        file = file,
+                        file = driveFile,
                         dateFmt = dateFmt,
                         restoring = uiState.restoring,
                         onRestore = { viewModel.restoreBackup(file.id) },

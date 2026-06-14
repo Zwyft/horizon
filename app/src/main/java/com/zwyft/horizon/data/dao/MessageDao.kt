@@ -1,7 +1,10 @@
 package com.zwyft.horizon.data.dao
 
 import androidx.room.*
+import com.zwyft.horizon.data.entity.AddressNameCount
+import com.zwyft.horizon.data.entity.AddressNameTuple
 import com.zwyft.horizon.data.entity.MessageEntity
+import com.zwyft.horizon.data.entity.MonitoredDateRange
 import kotlinx.coroutines.flow.Flow
 import java.util.Date
 
@@ -110,4 +113,17 @@ interface MessageDao {
     // ── Import resume support ────────────────────────────────
     @Query("SELECT MAX(date) FROM messages WHERE importedFrom = :batchTag")
     suspend fun getLatestDateForBatch(batchTag: String): Date?
+
+    @Query("""
+        SELECT address, COUNT(*) as cnt
+        FROM messages
+        WHERE monitored = 1
+        GROUP BY address
+        ORDER BY cnt DESC
+        LIMIT :limit
+    """)
+    suspend fun getTopAddresses(limit: Int = 50): List<AddressNameCount>
+
+    @Query("SELECT MIN(date) as minDate, MAX(date) as maxDate FROM messages WHERE monitored = 1")
+    suspend fun getMonitoredDateRange(): MonitoredDateRange?
 }

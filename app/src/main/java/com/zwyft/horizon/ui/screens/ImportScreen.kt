@@ -14,7 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.zwyft.horizon.R
 import com.zwyft.horizon.importing.ImportViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
@@ -36,8 +38,7 @@ fun ImportScreen(
         uri?.let {
             scope.launch {
                 try {
-                    val tempFile = copyUriToTempFile(context, it, "import_tmp.xml")
-                    viewModel.onFileSelected(context, tempFile)
+                    viewModel.onFileSelected(context, it, "import_tmp")
                 } catch (e: Exception) {
                     snackbarHostState.showSnackbar("Failed to read file: ${e.message}")
                 }
@@ -49,10 +50,10 @@ fun ImportScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is ImportViewModel.ImportEvent.Done -> {
+                is com.zwyft.horizon.importing.ImportEvent.Done -> {
                     snackbarHostState.showSnackbar("Imported ${event.total} messages")
                 }
-                is ImportViewModel.ImportEvent.Error -> {
+                is com.zwyft.horizon.importing.ImportEvent.Error -> {
                     snackbarHostState.showSnackbar("Error: ${event.message}")
                 }
             }
@@ -100,16 +101,3 @@ fun ImportScreen(
     }
 }
 
-/**
- * Copy a content:// URI to a temp file (required for SAF URIs).
- */
-private suspend fun copyUriToTempFile(context: Context, uri: Uri, fileName: String): File =
-    withContext(Dispatchers.IO) {
-        val tempFile = File(context.cacheDir, fileName)
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            FileOutputStream(tempFile).use { output ->
-                input.copyTo(output)
-            }
-        }
-        tempFile
-    }

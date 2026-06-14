@@ -111,7 +111,6 @@ class MessageSyncManager(
             //    then always re-match every message (handles 2nd+ syncs)
             val repo = ContactRepository(db)
             repo.seedDefaults()
-            repo.recomputeAllMonitored()
 
             // 6. Count how many messages are now monitored
             val monitoredCount = db.messageDao().countMonitored()
