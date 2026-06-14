@@ -20,7 +20,8 @@ data class Analytics(
     val monthlyTrends: List<MonthlyTrend>,
     val contactAnalytics: List<ContactAnalytics>,
     val emotionalToneDistribution: Map<String, Int>,
-    val hourlyPattern: Map<Int, Double>
+    val hourlyPattern: Map<Int, Double>,
+    val generatedAt: Long = System.currentTimeMillis()
 )
 
 data class WeeklyTrend(
