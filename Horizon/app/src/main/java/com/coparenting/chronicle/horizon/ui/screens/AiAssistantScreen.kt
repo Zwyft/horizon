@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -41,19 +42,45 @@ fun AiAssistantScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp))
-                        Text("AI Assistant", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.AutoAwesome, null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Column {
+                            Text(
+                                "AI Assistant",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "Co-parenting journal",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onPrimary)
+                        Icon(Icons.Default.ArrowBack, "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             )
         },
@@ -65,7 +92,8 @@ fun AiAssistantScreen(
                 isLoading = state.isLoading,
                 enabled = state.hasApiKey
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -82,18 +110,16 @@ fun AiAssistantScreen(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(state.messages) { message ->
                         MessageBubble(message = message)
                     }
                     if (state.isLoading) {
-                        item {
-                            TypingIndicator()
-                        }
+                        item { TypingIndicator() }
                     }
-                    item { Spacer(Modifier.height(8.dp)) }
+                    item { Spacer(Modifier.height(4.dp)) }
                 }
             }
         }
@@ -103,22 +129,27 @@ fun AiAssistantScreen(
 @Composable
 private fun NoApiKeyBanner(onGoToSettings: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error)
+            Icon(Icons.Default.Warning, null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.error)
             Text(
-                "Claude API key not configured.",
+                "No API key configured.",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
-            TextButton(onClick = onGoToSettings) { Text("Settings") }
+            TextButton(onClick = onGoToSettings) { Text("Set up") }
         }
     }
 }
@@ -126,45 +157,77 @@ private fun NoApiKeyBanner(onGoToSettings: () -> Unit) {
 @Composable
 private fun WelcomeMessage() {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            Icons.Default.AutoAwesome,
-            null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        )
-        Spacer(Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.AutoAwesome, null,
+                modifier = Modifier.size(36.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(Modifier.height(20.dp))
         Text(
-            "Ask me anything about your co-parenting history.",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            "Ask about your records",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(Modifier.height(12.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExampleQuestion("Did Cheyenne ask about her parents watching Horizon?")
-                ExampleQuestion("What happened on the last handoff?")
-                ExampleQuestion("Were there any incidents last month?")
-                ExampleQuestion("What did we agree about school pickup?")
-            }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "I can search your journal entries and messages to answer questions about your co-parenting history.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(28.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ExampleQuestion("What happened on the last handoff?")
+            ExampleQuestion("Were there any incidents last month?")
+            ExampleQuestion("What did we agree about school pickup?")
+            ExampleQuestion("Show me messages from last week")
         }
     }
 }
 
 @Composable
 private fun ExampleQuestion(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Icon(Icons.Default.QuestionAnswer, null, modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.secondary)
-        Text(
-            "\"$text\"",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                Icons.Default.QuestionAnswer, null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -173,61 +236,94 @@ private fun MessageBubble(message: ChatMessage) {
     val isUser = message.isUser
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom
     ) {
         if (!isUser) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.secondary)
+                Icon(
+                    Icons.Default.AutoAwesome, null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
             Spacer(Modifier.width(8.dp))
         }
 
-        Column(modifier = Modifier.widthIn(max = 300.dp)) {
+        Column(
+            modifier = Modifier.widthIn(max = 280.dp),
+            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
+        ) {
             Box(
                 modifier = Modifier
                     .clip(
                         RoundedCornerShape(
-                            topStart = 16.dp, topEnd = 16.dp,
-                            bottomStart = if (isUser) 16.dp else 4.dp,
-                            bottomEnd = if (isUser) 4.dp else 16.dp
+                            topStart = 20.dp, topEnd = 20.dp,
+                            bottomStart = if (isUser) 20.dp else 6.dp,
+                            bottomEnd = if (isUser) 6.dp else 20.dp
                         )
                     )
                     .background(
                         if (isUser) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.surfaceVariant
                     )
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Text(
                     message.text,
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (isUser) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            Spacer(Modifier.height(3.dp))
             Text(
                 message.timestamp.format(DateTimeFormatter.ofPattern("h:mm a")),
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                modifier = Modifier.padding(horizontal = 4.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
         }
+
+        if (isUser) Spacer(Modifier.width(4.dp))
     }
 }
 
 @Composable
 private fun TypingIndicator() {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-        Text("Searching your records…", style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(
+        modifier = Modifier.padding(start = 38.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 1.5.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "Thinking…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
@@ -240,13 +336,14 @@ private fun InputBar(
     enabled: Boolean
 ) {
     Surface(
-        tonalElevation = 8.dp,
-        shadowElevation = 4.dp
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
+        shadowElevation = 8.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp)
                 .navigationBarsPadding()
                 .imePadding(),
             verticalAlignment = Alignment.Bottom,
@@ -256,21 +353,35 @@ private fun InputBar(
                 value = text,
                 onValueChange = onTextChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text(if (enabled) "Ask about your records…" else "Add Claude API key in Settings") },
+                placeholder = {
+                    Text(
+                        if (enabled) "Message AI…" else "Configure API key in Settings",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                },
                 enabled = enabled && !isLoading,
                 maxLines = 4,
-                shape = RoundedCornerShape(24.dp)
+                shape = RoundedCornerShape(24.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                )
             )
             FilledIconButton(
                 onClick = onSend,
                 enabled = text.isNotBlank() && enabled && !isLoading,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(52.dp),
+                shape = CircleShape
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 } else {
-                    Icon(Icons.Default.Send, "Send")
+                    Icon(Icons.Default.ArrowUpward, "Send", modifier = Modifier.size(22.dp))
                 }
             }
         }

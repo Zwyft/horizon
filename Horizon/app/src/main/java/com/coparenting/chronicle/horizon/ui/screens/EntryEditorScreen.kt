@@ -48,110 +48,165 @@ fun EntryEditorScreen(
                         Text(
                             if (isEditing) "Edit Entry" else "New Entry",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.SemiBold
                         )
-                        Text(dateLabel, style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
+                        Text(
+                            dateLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onPrimary)
+                        Icon(Icons.Default.ArrowBack, "Back",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.save() }) {
-                        Icon(Icons.Default.Check, "Save", tint = MaterialTheme.colorScheme.onPrimary)
+                    FilledTonalButton(
+                        onClick = { viewModel.save() },
+                        modifier = Modifier.padding(end = 8.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Save")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-
             state.saveError?.let { error ->
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                    Text(error, modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Warning, null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.error)
+                        Text(error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
                 }
             }
 
-            // Title
+            // Title field
             OutlinedTextField(
                 value = state.title,
                 onValueChange = viewModel::setTitle,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Title (optional)") },
-                singleLine = true
+                label = { Text("Title") },
+                placeholder = { Text("Optional — e.g. Handoff, Medical visit…") },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp)
             )
 
-            // Content
+            // Content field
             OutlinedTextField(
                 value = state.content,
                 onValueChange = viewModel::setContent,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 180.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp),
                 label = { Text("What happened?") },
-                placeholder = { Text("Write your journal entry here…") },
-                minLines = 6
+                placeholder = { Text("Describe what occurred, any agreements made, or important details…") },
+                minLines = 7,
+                shape = RoundedCornerShape(14.dp)
             )
 
-            // Tags section
-            Text("Tags", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            TagGrid(selectedTags = state.selectedTags, onToggle = viewModel::toggleTag)
+            // Tags
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Tags",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                TagGrid(selectedTags = state.selectedTags, onToggle = viewModel::toggleTag)
+            }
 
-            // Important flag
+            // Important toggle
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (state.isImportant) MaterialTheme.colorScheme.tertiaryContainer
-                    else MaterialTheme.colorScheme.surfaceVariant
-                )
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         Icon(
                             if (state.isImportant) Icons.Default.Star else Icons.Default.StarBorder,
                             null,
-                            tint = if (state.isImportant) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
+                            modifier = Modifier.size(22.dp),
+                            tint = if (state.isImportant) MaterialTheme.colorScheme.tertiary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Column {
-                            Text("Mark as Important", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                            Text("Flags this entry for quick reference", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "Mark as Important",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                "Highlights this entry for quick reference",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (state.isImportant)
+                                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
-                    Switch(checked = state.isImportant, onCheckedChange = { viewModel.toggleImportant() })
+                    Switch(
+                        checked = state.isImportant,
+                        onCheckedChange = { viewModel.toggleImportant() }
+                    )
                 }
             }
 
             // Save button
             Button(
                 onClick = { viewModel.save() },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(Icons.Default.Save, null, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Save Entry", style = MaterialTheme.typography.titleMedium)
+                Text("Save Entry", style = MaterialTheme.typography.labelLarge)
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -159,9 +214,9 @@ fun EntryEditorScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TagGrid(selectedTags: Set<String>, onToggle: (String) -> Unit) {
-    val chunked = ALL_TAGS.chunked(3)
+    val rows = ALL_TAGS.chunked(3)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        chunked.forEach { row ->
+        rows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { tag ->
                     val selected = tag in selectedTags
@@ -171,7 +226,8 @@ private fun TagGrid(selectedTags: Set<String>, onToggle: (String) -> Unit) {
                         label = { Text(tag, style = MaterialTheme.typography.labelMedium) },
                         leadingIcon = if (selected) {
                             { Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp)) }
-                        } else null
+                        } else null,
+                        shape = RoundedCornerShape(20.dp)
                     )
                 }
             }

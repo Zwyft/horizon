@@ -2,6 +2,7 @@ package com.coparenting.chronicle.horizon.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,18 +41,19 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
+                title = { Text("Settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onPrimary)
+                        Icon(Icons.Default.ArrowBack, "Back",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -64,7 +66,7 @@ fun SettingsScreen(
 
             // ── CO-PARENT ──────────────────────────────────────────────────
             SectionHeader(icon = Icons.Default.Person, title = "Co-Parent")
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
                         value = nameInput,
@@ -73,7 +75,8 @@ fun SettingsScreen(
                         label = { Text("Name") },
                         placeholder = { Text("Co-parent's name") },
                         leadingIcon = { Icon(Icons.Default.Person, null) },
-                        singleLine = true
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp)
                     )
                     OutlinedTextField(
                         value = phoneInput,
@@ -83,7 +86,8 @@ fun SettingsScreen(
                         placeholder = { Text("+1 555 000 0000") },
                         leadingIcon = { Icon(Icons.Default.Phone, null) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        singleLine = true
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp)
                     )
                     Text(
                         "SMS messages from this number will appear in the daily timeline.",
@@ -95,7 +99,7 @@ fun SettingsScreen(
 
             // ── AI PROVIDER TOGGLE ─────────────────────────────────────────
             SectionHeader(icon = Icons.Default.AutoAwesome, title = "AI Provider")
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         "Choose which AI service generates diary entries and answers questions.",
@@ -120,7 +124,7 @@ fun SettingsScreen(
 
             // ── CLAUDE API KEY ─────────────────────────────────────────────
             SectionHeader(icon = Icons.Default.VpnKey, title = "Claude API Key")
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
                         value = claudeKeyInput,
@@ -136,7 +140,8 @@ fun SettingsScreen(
                         },
                         visualTransformation = if (showClaudeKey) VisualTransformation.None else PasswordVisualTransformation(),
                         singleLine = true,
-                        enabled = state.aiProvider == "claude"
+                        enabled = state.aiProvider == "claude",
+                        shape = RoundedCornerShape(14.dp)
                     )
                     Text(
                         "Stored locally on this device only. Get a key at console.anthropic.com.",
@@ -149,7 +154,7 @@ fun SettingsScreen(
 
             // ── OPENROUTER API KEY + MODEL ─────────────────────────────────
             SectionHeader(icon = Icons.Default.Cloud, title = "OpenRouter (Free Models)")
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
                         value = orKeyInput,
@@ -165,7 +170,8 @@ fun SettingsScreen(
                         },
                         visualTransformation = if (showOrKey) VisualTransformation.None else PasswordVisualTransformation(),
                         singleLine = true,
-                        enabled = state.aiProvider == "openrouter"
+                        enabled = state.aiProvider == "openrouter",
+                        shape = RoundedCornerShape(14.dp)
                     )
                     Text(
                         "Free to use. Get a key at openrouter.ai — no payment required for free models.",
@@ -228,7 +234,7 @@ fun SettingsScreen(
 
             // ── SMS ────────────────────────────────────────────────────────
             SectionHeader(icon = Icons.Default.Sms, title = "Text Messages")
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -272,7 +278,7 @@ fun SettingsScreen(
 
             // ── ABOUT ──────────────────────────────────────────────────────
             SectionHeader(icon = Icons.Default.Info, title = "About")
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SettingsRow("App", "Horizon — Co-Parenting Journal")
                     SettingsRow("Version", "1.0.0")

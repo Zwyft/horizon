@@ -1,6 +1,8 @@
 package com.coparenting.chronicle.horizon.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,38 +25,46 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.coparenting.chronicle.horizon.domain.model.ManualJournalEntry
 import com.coparenting.chronicle.horizon.presentation.viewmodel.CalendarViewModel
-import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onDaySelected: (LocalDateTime) -> Unit,
-    onSettingsClick: () -> Unit,
     viewModel: CalendarViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var searchActive by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Horizon", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
-                actions = {
-                    IconButton(onClick = { viewModel.updateSearch(if (state.isSearchActive) "" else " ") }) {
-                        Icon(if (state.isSearchActive) Icons.Default.Close else Icons.Default.Search, "Search")
-                    }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, "Settings")
+            CenterAlignedTopAppBar(
+                title = {
+                    AnimatedVisibility(visible = !searchActive, enter = fadeIn(), exit = fadeOut()) {
+                        Text(
+                            "Horizon",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                actions = {
+                    IconButton(onClick = {
+                        searchActive = !searchActive
+                        if (!searchActive) viewModel.clearSearch()
+                    }) {
+                        Icon(
+                            if (searchActive) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = if (searchActive) "Close" else "Search",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
                 )
             )
         }
@@ -63,16 +74,15 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Search bar
-            AnimatedVisibility(visible = state.isSearchActive) {
+            AnimatedVisibility(visible = searchActive) {
                 SearchBarRow(
                     query = state.searchQuery,
                     onQueryChange = viewModel::updateSearch,
-                    onClear = viewModel::clearSearch
+                    onClear = { viewModel.clearSearch() }
                 )
             }
 
-            if (state.isSearchActive && state.searchQuery.isNotBlank()) {
+            if (searchActive && state.searchQuery.isNotBlank()) {
                 SearchResultsList(
                     results = state.searchResults,
                     onResultClick = { entry -> onDaySelected(entry.date) }
@@ -96,35 +106,37 @@ fun HomeScreen(
 
 @Composable
 private fun SearchBarRow(query: String, onQueryChange: (String) -> Unit, onClear: () -> Unit) {
-    Row(
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("Search journal entries…") },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            trailingIcon = {
-                if (query.isNotBlank()) {
-                    IconButton(onClick = onClear) { Icon(Icons.Default.Clear, "Clear") }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(50)
-        )
-    }
+        placeholder = { Text("Search journal entries…") },
+        leadingIcon = { Icon(Icons.Default.Search, null) },
+        trailingIcon = {
+            if (query.isNotBlank()) {
+                IconButton(onClick = onClear) { Icon(Icons.Default.Clear, "Clear") }
+            }
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(28.dp)
+    )
 }
 
 @Composable
 private fun SearchResultsList(results: List<ManualJournalEntry>, onResultClick: (ManualJournalEntry) -> Unit) {
     if (results.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-            Text("No matching entries found.", style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(48.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.SearchOff, null, modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.outlineVariant)
+                Text("No matching entries", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         return
     }
@@ -140,16 +152,18 @@ private fun SearchResultsList(results: List<ManualJournalEntry>, onResultClick: 
 private fun SearchResultCard(entry: ManualJournalEntry, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = entry.date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )
             if (entry.title.isNotBlank()) {
-                Text(entry.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(entry.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             }
             Text(
                 entry.content,
@@ -171,73 +185,77 @@ private fun CalendarView(
     onNextMonth: () -> Unit,
     onDayClick: (LocalDateTime) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+
         // Month navigation header
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onPrevMonth) {
-                Icon(Icons.Default.ChevronLeft, "Previous month", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.ChevronLeft, "Previous month",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(
-                text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            IconButton(onClick = onNextMonth) {
-                Icon(Icons.Default.ChevronRight, "Next month", tint = MaterialTheme.colorScheme.primary)
-            }
-        }
-
-        // Day of week headers
-        Row(modifier = Modifier.fillMaxWidth()) {
-            listOf("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa").forEach { label ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = label,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
+                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM")),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = currentMonth.format(DateTimeFormatter.ofPattern("yyyy")),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            IconButton(onClick = onNextMonth) {
+                Icon(Icons.Default.ChevronRight, "Next month",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
         Spacer(Modifier.height(4.dp))
 
-        // Calendar days grid
-        val firstDayOfMonth = currentMonth.atDay(1)
-        val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7  // Sunday = 0
+        // Day-of-week headers
+        Row(modifier = Modifier.fillMaxWidth()) {
+            listOf("S", "M", "T", "W", "T", "F", "S").forEachIndexed { i, label ->
+                Text(
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (i == 0 || i == 6) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Calendar grid
+        val firstDayOffset = currentMonth.atDay(1).dayOfWeek.value % 7
         val daysInMonth = currentMonth.lengthOfMonth()
-        val today = LocalDateTime.now().toLocalDate().atStartOfDay()
-
-        // Normalize entry dates to midnight for comparison
+        val today = LocalDateTime.now().toLocalDate()
         val entryDates = datesWithEntries.map { it.toLocalDate() }.toSet()
-
-        val totalCells = firstDayOfWeek + daysInMonth
-        val rows = (totalCells + 6) / 7
+        val rows = (firstDayOffset + daysInMonth + 6) / 7
 
         for (row in 0 until rows) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 for (col in 0 until 7) {
-                    val cellIndex = row * 7 + col
-                    val dayNum = cellIndex - firstDayOfWeek + 1
-
+                    val dayNum = row * 7 + col - firstDayOffset + 1
                     if (dayNum < 1 || dayNum > daysInMonth) {
-                        Spacer(modifier = Modifier.weight(1f).height(52.dp))
+                        Spacer(modifier = Modifier.weight(1f).height(56.dp))
                     } else {
                         val dayDate = currentMonth.atDay(dayNum).atStartOfDay()
-                        val isToday = dayDate.toLocalDate() == today.toLocalDate()
-                        val isSelected = dayDate.toLocalDate() == selectedDate.toLocalDate()
-                        val hasEntries = dayDate.toLocalDate() in entryDates
-
                         DayCell(
                             day = dayNum,
-                            isToday = isToday,
-                            isSelected = isSelected,
-                            hasEntries = hasEntries,
+                            isToday = dayDate.toLocalDate() == today,
+                            isSelected = dayDate.toLocalDate() == selectedDate.toLocalDate(),
+                            hasEntries = dayDate.toLocalDate() in entryDates,
+                            isWeekend = col == 0 || col == 6,
                             onClick = { onDayClick(dayDate) },
                             modifier = Modifier.weight(1f)
                         )
@@ -246,32 +264,29 @@ private fun CalendarView(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
-        // Legend
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            LegendItem(color = MaterialTheme.colorScheme.primary, label = "Today")
-            LegendItem(color = MaterialTheme.colorScheme.secondary, label = "Has entries")
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        // Hint
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.secondary)
-                Spacer(Modifier.width(12.dp))
+        // Entry count summary strip
+        val entryCount = datesWithEntries.count { it.month == currentMonth.month && it.year == currentMonth.year }
+        if (entryCount > 0) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.BookmarkBorder, null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
                 Text(
-                    "Tap any day to view entries, text messages, and AI-generated summaries.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    "$entryCount ${if (entryCount == 1) "entry" else "entries"} this month",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -284,27 +299,33 @@ private fun DayCell(
     isToday: Boolean,
     isSelected: Boolean,
     hasEntries: Boolean,
+    isWeekend: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bgColor = when {
+    val bgColor: Color = when {
         isSelected -> MaterialTheme.colorScheme.primary
-        isToday -> MaterialTheme.colorScheme.primaryContainer
-        else -> androidx.compose.ui.graphics.Color.Transparent
+        isToday    -> MaterialTheme.colorScheme.primaryContainer
+        else       -> Color.Transparent
     }
-    val textColor = when {
+    val textColor: Color = when {
         isSelected -> MaterialTheme.colorScheme.onPrimary
-        isToday -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.onSurface
+        isToday    -> MaterialTheme.colorScheme.primary
+        isWeekend  -> MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+        else       -> MaterialTheme.colorScheme.onSurface
+    }
+    val dotColor: Color = when {
+        isSelected -> MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+        else       -> MaterialTheme.colorScheme.primary
     }
 
     Column(
         modifier = modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .height(56.dp)
+            .padding(2.dp)
+            .clip(CircleShape)
             .background(bgColor)
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -315,20 +336,13 @@ private fun DayCell(
             color = textColor
         )
         if (hasEntries) {
+            Spacer(Modifier.height(2.dp))
             Box(
                 modifier = Modifier
-                    .size(5.dp)
+                    .size(4.dp)
                     .clip(CircleShape)
-                    .background(if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondary)
+                    .background(dotColor)
             )
         }
-    }
-}
-
-@Composable
-private fun LegendItem(color: androidx.compose.ui.graphics.Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(color))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
