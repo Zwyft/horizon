@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.coparenting.chronicle.horizon.domain.model.ManualJournalEntry
@@ -26,7 +25,7 @@ import com.coparenting.chronicle.horizon.ui.theme.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DayDetailScreen(
     date: LocalDateTime,
@@ -160,7 +159,9 @@ fun DayDetailScreen(
                             is TimelineItem.SmsItem  -> SmsBubble(msg = item.msg)
                             is TimelineItem.DiaryItem -> AiDiaryCard(
                                 content = item.entry.content,
-                                title = item.entry.title
+                                title = item.entry.title,
+                                onDelete = { viewModel.deleteDiary() },
+                                onRegenerate = { viewModel.regenerateDiary() }
                             )
                         }
                     }
@@ -186,7 +187,7 @@ private fun AiSummaryButton(onClick: () -> Unit) {
     ) {
         Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
-        Text("Generate AI Summary", style = MaterialTheme.typography.labelLarge)
+        Text("Generate AI Diary Entry", style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -249,6 +250,7 @@ private fun EmptyDayMessage(date: LocalDateTime, onAddEntry: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun JournalEntryCard(
     entry: ManualJournalEntry,
@@ -277,13 +279,13 @@ private fun JournalEntryCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (isImportant) {
-                        Icon(
-                            Icons.Default.Star, null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
+                    Icon(
+                        if (isImportant) Icons.Default.Star else Icons.Default.BookmarkBorder,
+                        null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (isImportant) MaterialTheme.colorScheme.tertiary
+                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                    )
                     Text(
                         entry.timestamp.format(DateTimeFormatter.ofPattern("h:mm a")),
                         style = MaterialTheme.typography.labelMedium,
@@ -342,11 +344,12 @@ private fun JournalEntryCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TagChipRow(tags: List<String>) {
-    Row(
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(top = 0.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         tags.forEach { tag -> TagChip(tag) }
     }
@@ -354,7 +357,7 @@ private fun TagChipRow(tags: List<String>) {
 
 @Composable
 fun TagChip(tag: String) {
-    val (bg, fg) = tagColors(tag)
+    val (bg, _) = tagColors(tag)
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -415,7 +418,15 @@ private fun SmsBubble(msg: SmsDataSource.SmsMessage) {
 }
 
 @Composable
-private fun AiDiaryCard(title: String, content: String) {
+private fun AiDiaryCard(
+    title: String,
+    content: String,
+    onDelete: () -> Unit,
+    onRegenerate: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -424,21 +435,67 @@ private fun AiDiaryCard(title: String, content: String) {
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    Icons.Default.AutoAwesome, null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    "AI Summary",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.AutoAwesome, null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        "AI Diary Entry",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert, "Options",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Regenerate") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onRegenerate()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.error)
+                            },
+                            onClick = {
+                                showMenu = false
+                                showDeleteDialog = true
+                            }
+                        )
+                    }
+                }
             }
+
             if (title.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -451,11 +508,27 @@ private fun AiDiaryCard(title: String, content: String) {
             Spacer(Modifier.height(10.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
             Spacer(Modifier.height(10.dp))
-            Text(
-                content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+            SimpleMarkdownText(
+                text = content,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete AI Diary Entry?") },
+            text = { Text("This removes the generated entry. You can regenerate it any time.") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteDialog = false }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }

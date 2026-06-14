@@ -82,6 +82,35 @@ class DayDetailViewModel @Inject constructor(
         viewModelScope.launch { journalRepository.delete(entry) }
     }
 
+    fun deleteDiary() {
+        val diary = _uiState.value.generatedDiary ?: return
+        viewModelScope.launch {
+            runCatching { diaryRepository.deleteDiaryEntry(diary.id) }
+            _uiState.update {
+                it.copy(
+                    generatedDiary = null,
+                    timeline = buildTimeline(it.journalEntries, it.smsMessages, null)
+                )
+            }
+        }
+    }
+
+    fun regenerateDiary() {
+        viewModelScope.launch {
+            val existing = _uiState.value.generatedDiary
+            if (existing != null) {
+                runCatching { diaryRepository.deleteDiaryEntry(existing.id) }
+                _uiState.update {
+                    it.copy(
+                        generatedDiary = null,
+                        timeline = buildTimeline(it.journalEntries, it.smsMessages, null)
+                    )
+                }
+            }
+            generateAiSummary()
+        }
+    }
+
     fun generateAiSummary() {
         val state = _uiState.value
         viewModelScope.launch {

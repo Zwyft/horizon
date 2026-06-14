@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.calculateBottomPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
@@ -25,8 +27,6 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.calculateBottomPadding
 
 private val dtFmt = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
@@ -35,12 +35,17 @@ object Routes {
     const val DAY_DETAIL   = "day/{dateStr}"
     const val ENTRY_NEW    = "entry/new/{dateStr}"
     const val ENTRY_EDIT   = "entry/edit/{entryId}"
-    const val AI_ASSISTANT = "assistant"
+    const val AI_ASSISTANT = "assistant?q={q}"
     const val SETTINGS     = "settings"
 
     fun dayDetail(date: LocalDateTime) = "day/${encode(date.format(dtFmt))}"
     fun entryNew(date: LocalDateTime)  = "entry/new/${encode(date.format(dtFmt))}"
     fun entryEdit(id: String)          = "entry/edit/${encode(id)}"
+    fun aiAssistant()                  = "assistant"
+    fun aiAssistantForDay(date: LocalDateTime): String {
+        val label = date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        return "assistant?q=${encode("What happened on $label?")}"
+    }
 
     private fun encode(s: String) = URLEncoder.encode(s, StandardCharsets.UTF_8.toString())
 }
@@ -53,12 +58,12 @@ private data class BottomNavItem(
 )
 
 private val bottomNavItems = listOf(
-    BottomNavItem(Routes.HOME,         "Journal",  Icons.Filled.Home,         Icons.Outlined.Home),
-    BottomNavItem(Routes.AI_ASSISTANT, "AI Chat",  Icons.Filled.AutoAwesome,  Icons.Outlined.AutoAwesome),
-    BottomNavItem(Routes.SETTINGS,     "Settings", Icons.Filled.Settings,     Icons.Outlined.Settings),
+    BottomNavItem(Routes.HOME,        "Journal",  Icons.Filled.Home,        Icons.Outlined.Home),
+    BottomNavItem(Routes.aiAssistant(), "AI Chat", Icons.Filled.AutoAwesome, Icons.Outlined.AutoAwesome),
+    BottomNavItem(Routes.SETTINGS,    "Settings", Icons.Filled.Settings,    Icons.Outlined.Settings),
 )
 
-private val topLevelRoutes = setOf(Routes.HOME, Routes.AI_ASSISTANT, Routes.SETTINGS)
+private val topLevelRoutes = setOf(Routes.HOME, Routes.aiAssistant(), Routes.SETTINGS)
 
 @Composable
 fun AppNavigation() {
@@ -77,14 +82,15 @@ fun AppNavigation() {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar = currentRoute in topLevelRoutes
+    val showBottomBar = currentRoute?.substringBefore("?") in topLevelRoutes || currentRoute in topLevelRoutes
 
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->
-                        val selected = currentRoute == item.route
+                        val selected = currentRoute?.startsWith(item.route.substringBefore("?")) == true ||
+                                       currentRoute == item.route
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
@@ -130,7 +136,7 @@ fun AppNavigation() {
                     onBack = { navController.popBackStack() },
                     onAddEntry = { d -> navController.navigate(Routes.entryNew(d)) },
                     onEditEntry = { id -> navController.navigate(Routes.entryEdit(id)) },
-                    onAskAI = { navController.navigate(Routes.AI_ASSISTANT) }
+                    onAskAI = { navController.navigate(Routes.aiAssistantForDay(date)) }
                 )
             }
 
@@ -160,9 +166,15 @@ fun AppNavigation() {
                 )
             }
 
-            composable(Routes.AI_ASSISTANT) {
+            composable(
+                route = Routes.AI_ASSISTANT,
+                arguments = listOf(navArgument("q") { type = NavType.StringType; defaultValue = "" })
+            ) { backStack ->
+                val rawQ = backStack.arguments?.getString("q") ?: ""
+                val initialQuestion = if (rawQ.isBlank()) "" else URLDecoder.decode(rawQ, StandardCharsets.UTF_8.toString())
                 AiAssistantScreen(
                     hasSmsPermission = hasSmsPermission,
+                    initialQuestion = initialQuestion,
                     onBack = { navController.popBackStack() },
                     onGoToSettings = {
                         navController.navigate(Routes.SETTINGS) {

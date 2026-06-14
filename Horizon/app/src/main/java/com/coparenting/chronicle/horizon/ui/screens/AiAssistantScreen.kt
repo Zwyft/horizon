@@ -1,6 +1,7 @@
 package com.coparenting.chronicle.horizon.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.coparenting.chronicle.horizon.presentation.viewmodel.AiAssistantViewModel
@@ -25,12 +27,19 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun AiAssistantScreen(
     hasSmsPermission: Boolean,
+    initialQuestion: String = "",
     onBack: () -> Unit,
     onGoToSettings: () -> Unit,
     viewModel: AiAssistantViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
+
+    LaunchedEffect(initialQuestion) {
+        if (initialQuestion.isNotBlank()) {
+            viewModel.setInput(initialQuestion)
+        }
+    }
 
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) {
@@ -105,7 +114,7 @@ fun AiAssistantScreen(
             }
 
             if (state.messages.isEmpty()) {
-                WelcomeMessage()
+                WelcomeMessage(onQuestionClick = viewModel::setInput)
             } else {
                 LazyColumn(
                     state = listState,
@@ -155,7 +164,7 @@ private fun NoApiKeyBanner(onGoToSettings: () -> Unit) {
 }
 
 @Composable
-private fun WelcomeMessage() {
+private fun WelcomeMessage(onQuestionClick: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -188,27 +197,28 @@ private fun WelcomeMessage() {
             "I can search your journal entries and messages to answer questions about your co-parenting history.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(28.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ExampleQuestion("What happened on the last handoff?")
-            ExampleQuestion("Were there any incidents last month?")
-            ExampleQuestion("What did we agree about school pickup?")
-            ExampleQuestion("Show me messages from last week")
+            ExampleQuestion("What happened on the last handoff?", onQuestionClick)
+            ExampleQuestion("Were there any incidents last month?", onQuestionClick)
+            ExampleQuestion("What did we agree about school pickup?", onQuestionClick)
+            ExampleQuestion("Show me messages from last week", onQuestionClick)
         }
     }
 }
 
 @Composable
-private fun ExampleQuestion(text: String) {
+private fun ExampleQuestion(text: String, onClick: (String) -> Unit) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 0.dp
+        tonalElevation = 0.dp,
+        modifier = Modifier.clickable { onClick(text) }
     ) {
         Row(
             modifier = Modifier
@@ -224,8 +234,14 @@ private fun ExampleQuestion(text: String) {
             )
             Text(
                 text,
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Icon(
+                Icons.Default.ArrowForward, null,
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
             )
         }
     }
@@ -275,9 +291,8 @@ private fun MessageBubble(message: ChatMessage) {
                     )
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Text(
-                    message.text,
-                    style = MaterialTheme.typography.bodyMedium,
+                SimpleMarkdownText(
+                    text = message.text,
                     color = if (isUser) MaterialTheme.colorScheme.onPrimary
                             else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -318,7 +333,7 @@ private fun TypingIndicator() {
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "Thinking…",
+                    "Searching your records…",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -355,7 +370,7 @@ private fun InputBar(
                 modifier = Modifier.weight(1f),
                 placeholder = {
                     Text(
-                        if (enabled) "Message AI…" else "Configure API key in Settings",
+                        if (enabled) "Ask about your records…" else "Configure API key in Settings",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
