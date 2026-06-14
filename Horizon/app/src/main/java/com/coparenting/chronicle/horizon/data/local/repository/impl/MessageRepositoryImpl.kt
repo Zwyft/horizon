@@ -83,54 +83,66 @@ class MessageRepositoryImpl @Inject constructor(
         return messageDao.getMessageCountsByContact(startDate, endDate)
     }
     
-    override suspend fun syncMessagesFromSms(): List<Message> {
-        val smsMessages = smsDataSource.getSmsMessages()
+    override suspend fun syncMessagesFromSms(sinceMillis: Long): List<Message> {
+        val allMessages = smsDataSource.getAllMessagesSince(sinceMillis)
+        if (allMessages.isEmpty()) return emptyList()
+
         val existingContacts = contactDao.getAllContacts().first()
-        
-        val processedMessages = smsMessages.map { smsMessage ->
-            val contact = existingContacts.find { it.phoneNumber == smsMessage.address }
+
+        // Map phone -> contact for fast lookup
+        val contactByPhone = existingContacts.associateBy { it.phoneNumber }
+
+        val processedMessages = allMessages.map { smsMsg ->
+            val contact = contactByPhone[smsMsg.address]
                 ?: Contact(
-                    name = smsMessage.contactName ?: smsMessage.address,
-                    phoneNumber = smsMessage.address,
-                    lastContactDate = smsMessage.timestamp,
-                    lastMessageText = smsMessage.body,
-                    lastMessageTimestamp = smsMessage.timestamp
+                    name = smsMsg.contactName ?: smsMsg.address,
+                    phoneNumber = smsMsg.address,
+                    lastContactDate = smsMsg.timestamp,
+                    lastMessageText = smsMsg.body,
+                    lastMessageTimestamp = smsMsg.timestamp
                 )
-            
+
+            // Stable ID prevents duplicate rows across syncs
+            val stableId = if (smsMsg.messageType == com.coparenting.chronicle.horizon.domain.model.MessageType.MMS)
+                "mms_${smsMsg.id}" else "sms_${smsMsg.id}"
+
             Message(
+                id = stableId,
                 contactId = contact.id,
                 contactName = contact.name,
-                phoneNumber = smsMessage.address,
-                messageText = smsMessage.body,
-                timestamp = smsMessage.timestamp,
-                messageType = smsMessage.messageType ?: com.coparenting.chronicle.horizon.domain.model.MessageType.TEXT,
-                isIncoming = smsMessage.type == com.coparenting.chronicle.horizon.domain.model.MessageType.INCOMING,
-                threadId = smsMessage.threadId,
-                isRead = smsMessage.isRead,
-                folder = smsMessage.folder
+                phoneNumber = smsMsg.address,
+                messageText = smsMsg.body,
+                timestamp = smsMsg.timestamp,
+                messageType = smsMsg.messageType ?: com.coparenting.chronicle.horizon.domain.model.MessageType.TEXT,
+                isIncoming = smsMsg.type == com.coparenting.chronicle.horizon.domain.model.MessageType.INCOMING,
+                threadId = smsMsg.threadId,
+                isRead = smsMsg.isRead,
+                folder = smsMsg.folder,
+                attachmentCount = smsMsg.attachmentCount
             )
         }
-        
-        val newContacts = processedMessages.mapNotNull { message ->
-            val existingContact = existingContacts.find { it.phoneNumber == message.phoneNumber }
-            if (existingContact == null) {
+
+        // Save any new contacts
+        val newContacts = allMessages.mapNotNull { smsMsg ->
+            if (contactByPhone[smsMsg.address] == null) {
                 Contact(
-                    name = message.contactName,
-                    phoneNumber = message.phoneNumber,
-                    lastContactDate = message.timestamp,
-                    lastMessageText = message.messageText,
-                    lastMessageTimestamp = message.timestamp,
+                    name = smsMsg.contactName ?: smsMsg.address,
+                    phoneNumber = smsMsg.address,
+                    lastContactDate = smsMsg.timestamp,
+                    lastMessageText = smsMsg.body,
+                    lastMessageTimestamp = smsMsg.timestamp,
                     messageCount = 1
                 )
             } else null
-        }.distinct()
-        
+        }.distinctBy { it.phoneNumber }
+
         if (newContacts.isNotEmpty()) {
             contactDao.insertContacts(newContacts)
         }
-        
-        val newMessageIds = messageDao.insertMessages(processedMessages)
-        
+
+        // REPLACE strategy in DAO means stable IDs make this idempotent
+        messageDao.insertMessages(processedMessages)
+
         processedMessages.forEach { message ->
             contactDao.updateContactLastContact(
                 message.contactId,
@@ -139,7 +151,7 @@ class MessageRepositoryImpl @Inject constructor(
                 message.timestamp
             )
         }
-        
+
         return processedMessages
     }
     

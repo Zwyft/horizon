@@ -19,6 +19,7 @@ class AppPreferences(private val context: Context) {
         val OPEN_ROUTER_API_KEY = stringPreferencesKey("open_router_api_key")
         val AI_PROVIDER = stringPreferencesKey("ai_provider") // "claude" | "openrouter"
         val SELECTED_OPEN_ROUTER_MODEL = stringPreferencesKey("selected_open_router_model")
+        val LAST_SYNC_TIME_MILLIS = longPreferencesKey("last_sync_time_millis")
     }
 
     val coParentName: Flow<String> = context.dataStore.data.map { it[COPARENT_NAME] ?: "" }
@@ -30,6 +31,7 @@ class AppPreferences(private val context: Context) {
     val selectedOpenRouterModel: Flow<String> = context.dataStore.data.map {
         it[SELECTED_OPEN_ROUTER_MODEL] ?: "meta-llama/llama-3.3-70b-instruct:free"
     }
+    val lastSyncTimeMillis: Flow<Long> = context.dataStore.data.map { it[LAST_SYNC_TIME_MILLIS] ?: 0L }
 
     suspend fun setCoParentName(v: String) = context.dataStore.edit { it[COPARENT_NAME] = v }
     suspend fun setCoParentPhone(v: String) = context.dataStore.edit { it[COPARENT_PHONE] = v }
@@ -38,4 +40,5 @@ class AppPreferences(private val context: Context) {
     suspend fun setOpenRouterApiKey(v: String) = context.dataStore.edit { it[OPEN_ROUTER_API_KEY] = v }
     suspend fun setAiProvider(v: String) = context.dataStore.edit { it[AI_PROVIDER] = v }
     suspend fun setSelectedOpenRouterModel(v: String) = context.dataStore.edit { it[SELECTED_OPEN_ROUTER_MODEL] = v }
+    suspend fun setLastSyncTimeMillis(v: Long) = context.dataStore.edit { it[LAST_SYNC_TIME_MILLIS] = v }
 }

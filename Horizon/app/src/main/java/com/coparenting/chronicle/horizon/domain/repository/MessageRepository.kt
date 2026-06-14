@@ -38,7 +38,7 @@ interface MessageRepository {
     
     fun getMessageCountsByContact(startDate: LocalDateTime, endDate: LocalDateTime): Flow<Map<String, Int>>
     
-    suspend fun syncMessagesFromSms(): List<Message>
+    suspend fun syncMessagesFromSms(sinceMillis: Long = 0L): List<Message>
     
     suspend fun refreshMessageContacts(): Int
 }

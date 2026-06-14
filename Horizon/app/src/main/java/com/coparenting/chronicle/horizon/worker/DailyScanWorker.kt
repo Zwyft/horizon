@@ -41,7 +41,9 @@ class DailyScanWorker @AssistedInject constructor(
         Log.d(TAG, "Starting daily scan at ${LocalDateTime.now()}")
         return try {
             processNewMessagesUseCase(LocalDateTime.now().minusHours(24))
-            generateDiaryEntryUseCase(LocalDateTime.now())
+            // Generate diary for yesterday so the day is complete before summarising
+            val yesterday = LocalDateTime.now().minusDays(1).toLocalDate().atStartOfDay()
+            generateDiaryEntryUseCase(yesterday)
             generateAnalyticsReportUseCase("current_user")
             Log.d(TAG, "Daily scan completed")
             Result.success()
