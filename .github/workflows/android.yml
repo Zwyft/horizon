@@ -1,0 +1,44 @@
+name: Android CI
+
+on:
+  push:
+    branches:
+      - main
+      - codex/co-parenting-log
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-debug-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android packages
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: co-parenting-log-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

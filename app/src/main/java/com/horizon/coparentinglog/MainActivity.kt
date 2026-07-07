@@ -123,12 +123,13 @@ class MainViewModel(application: android.app.Application) : AndroidViewModel(app
         viewModelScope.launch {
             val settings = settingsRepository.read()
             val archive = archiveRepository.read()
-            val contacts = runCatching { telephonySource.loadContacts() }.getOrDefault(emptyList())
             _uiState.value = _uiState.value.copy(
                 settings = settings,
                 archive = archive,
-                contacts = contacts,
             )
+            if (settings.contactsPermissionGranted) {
+                refreshContacts()
+            }
         }
     }
 
@@ -211,7 +212,7 @@ class MainViewModel(application: android.app.Application) : AndroidViewModel(app
         viewModelScope.launch {
             val settings = settingsRepository.read()
             if (!settings.contactsPermissionGranted) return@launch
-            val contacts = runCatching { telephonySource.loadContacts() }.getOrDefault(emptyList())
+            val contacts = runCatching { telephonySource.loadContacts() }.getOrElse { emptyList() }
             _uiState.value = _uiState.value.copy(contacts = contacts)
         }
     }
