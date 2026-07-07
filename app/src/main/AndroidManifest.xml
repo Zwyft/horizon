@@ -26,7 +26,7 @@
         </activity>
 
         <receiver
-            android:name=".sync.MessageBroadcastReceiver"
+            android:name=".sync.SmsBroadcastReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter>
@@ -35,7 +35,7 @@
         </receiver>
 
         <receiver
-            android:name=".sync.MessageBroadcastReceiver"
+            android:name=".sync.MmsBroadcastReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_WAP_PUSH">
             <intent-filter>
